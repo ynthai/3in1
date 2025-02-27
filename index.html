@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puzzle Battle</title>
+  <style>
+    /* Комментарий #1: Основные стили для игры */
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #2c3e50;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      border: 2px solid #fff;
+      background-color: #ecf0f1;
+      margin-top: 20px;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Комментарий #2: Элементы интерфейса -->
+  <h1>Puzzle Battle</h1>
+  <p>Score: <span id="score">0</span></p>
+  <p>Boss Health: <span id="boss-health">100</span></p>
+  <canvas id="gameCanvas" width="300" height="400"></canvas>
+  <div class="controls">
+    <button id="attackButton">Attack</button>
+  </div>
+
+  <script>
+    // Комментарий #3: Настройка игрового поля
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const gridSize = 6; // Размер сетки (6x6)
+    const tileWidth = canvas.width / gridSize;
+    const tileHeight = canvas.height / gridSize;
+
+    let board = [];
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+
+    // Комментарий #4: Инициализация игровой доски
+    function initializeBoard() {
+      board = [];
+      for (let row = 0; row < gridSize; row++) {
+        board[row] = [];
+        for (let col = 0; col < gridSize; col++) {
+          board[row][col] = colors[Math.floor(Math.random() * colors.length)];
+        }
+      }
+    }
+
+    // Комментарий #5: Отрисовка игровой доски
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+          ctx.fillStyle = board[row][col];
+          ctx.fillRect(col * tileWidth, row * tileHeight, tileWidth, tileHeight);
+          ctx.strokeStyle = '#000';
+          ctx.strokeRect(col * tileWidth, row * tileHeight, tileWidth, tileHeight);
+        }
+      }
+    }
+
+    // Комментарий #6: Логика перемещения плиток
+    let selectedTile = null;
+
+    function selectTile(row, col) {
+      if (!selectedTile) {
+        selectedTile = { row, col };
+      } else {
+        const newRow = selectedTile.row;
+        const newCol = selectedTile.col;
+        if (
+          Math.abs(newRow - row) + Math.abs(newCol - col) === 1 // Проверка соседних клеток
+        ) {
+          [board[newRow][newCol], board[row][col]] = [board[row][col], board[newRow][newCol]];
+          checkMatches();
+        }
+        selectedTile = null;
+      }
+    }
+
+    // Комментарий #7: Поиск совпадений
+    function checkMatches() {
+      let hasMatch = false;
+
+      // Проверка по строкам
+      for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col <= gridSize - 3; col++) {
+          if (
+            board[row][col] &&
+            board[row][col] === board[row][col + 1] &&
+            board[row][col] === board[row][col + 2]
+          ) {
+            clearTiles([[row, col], [row, col + 1], [row, col + 2]]);
+            hasMatch = true;
+          }
+        }
+      }
+
+      // Проверка по столбцам
+      for (let col = 0; col < gridSize; col++) {
+        for (let row = 0; row <= gridSize - 3; row++) {
+          if (
+            board[row][col] &&
+            board[row][col] === board[row + 1][col] &&
+            board[row][col] === board[row + 2][col]
+          ) {
+            clearTiles([[row, col], [row + 1, col], [row + 2, col]]);
+            hasMatch = true;
+          }
+        }
+      }
+
+      if (hasMatch) {
+        fillEmptyTiles();
+        checkMatches(); // Рекурсивная проверка после очистки
+      }
+    }
+
+    // Комментарий #8: Очистка плиток
+    function clearTiles(tiles) {
+      tiles.forEach(([row, col]) => {
+        board[row][col] = null;
+      });
+      updateScore(tiles.length);
+    }
+
+    // Комментарий #9: Заполнение пустых плиток
+    function fillEmptyTiles() {
+      for (let col = 0; col < gridSize; col++) {
+        let emptySpaces = [];
+        for (let row = 0; row < gridSize; row++) {
+          if (!board[row][col]) {
+            emptySpaces.push({ row, col });
+          }
+        }
+        emptySpaces.forEach((space) => {
+          board[space.row][space.col] = colors[Math.floor(Math.random() * colors.length)];
+        });
+      }
+    }
+
+    // Комментарий #10: Обновление счета
+    let score = 0;
+    const scoreDisplay = document.getElementById('score');
+    function updateScore(points) {
+      score += points;
+      scoreDisplay.textContent = score;
+    }
+
+    // Комментарий #11: Механика атаки босса
+    const bossHealthDisplay = document.getElementById('boss-health');
+    let bossHealth = 100;
+
+    document.getElementById('attackButton').addEventListener('click', () => {
+      const attackPower = Math.floor(score / 10); // Сила атаки зависит от набранных очков
+      if (attackPower > 0) {
+        bossHealth -= attackPower;
+        bossHealth = Math.max(bossHealth, 0);
+        bossHealthDisplay.textContent = bossHealth;
+        score = 0; // Сброс очков после атаки
+        scoreDisplay.textContent = score;
+        if (bossHealth <= 0) {
+          alert('You defeated the boss!');
+          resetGame();
+        }
+      }
+    });
+
+    // Комментарий #12: Сброс игры
+    function resetGame() {
+      initializeBoard();
+      score = 0;
+      bossHealth = 100;
+      scoreDisplay.textContent = score;
+      bossHealthDisplay.textContent = bossHealth;
+    }
+
+    // Комментарий #13: Обработка кликов на канве
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const col = Math.floor(x / tileWidth);
+      const row = Math.floor(y / tileHeight);
+      if (row >= 0 && row < gridSize && col >= 0 && col < gridSize) {
+        selectTile(row, col);
+      }
+    });
+
+    // Комментарий #14: Начало игры
+    initializeBoard();
+    drawBoard();
+  </script>
+
+</body>
+</html>
