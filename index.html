@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Puzzle Game</title>
   <style>
+    /* Общие стили */
     body {
       margin: 0;
       padding: 0;
@@ -17,9 +18,10 @@
       font-family: Arial, sans-serif;
     }
 
+    /* Стили игрового поля */
     .game-container {
       display: grid;
-      grid-template-columns: repeat(5, 60px);
+      grid-template-columns: repeat(5, 60px); /* Размер сетки */
       grid-template-rows: repeat(5, 60px);
       gap: 5px;
     }
@@ -34,21 +36,35 @@
       align-items: center;
       font-size: 24px;
       font-weight: bold;
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      transition: transform 0.3s ease, opacity 0.3s ease; /* Анимация */
     }
 
+    /* Цвета плиток */
     .red { background-color: #ff5733; color: white; }
     .blue { background-color: #335bff; color: white; }
     .green { background-color: #33ff57; color: white; }
     .yellow { background-color: #ffff33; color: black; }
     .purple { background-color: #b333ff; color: white; }
 
+    /* Стиль счетчика */
     .score-board {
       margin-top: 20px;
       font-size: 20px;
       font-weight: bold;
     }
 
+    /* Анимация ошибки */
+    .error-animation {
+      animation: error-shake 0.3s ease;
+    }
+
+    @keyframes error-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    /* Анимация удаления плиток */
     @keyframes fade-out {
       0% { opacity: 1; transform: scale(1); }
       100% { opacity: 0; transform: scale(0); }
@@ -60,49 +76,156 @@
   <div class="score-board">Score: <span id="score">0</span></div>
 
   <script>
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    const gridSize = 5;
-    let score = 0;
+    // Константы игры
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple']; // Доступные цвета
+    const gridSize = 5; // Размер сетки (5x5)
+    let score = 0; // Текущий счет
 
     const gameContainer = document.getElementById('gameContainer');
     const scoreDisplay = document.getElementById('score');
 
-    // Создаем игровое поле без готовых совпадений
+    // Создание игрового поля
     function createGrid() {
-      const tiles = [];
       for (let i = 0; i < gridSize * gridSize; i++) {
-        let tileColor = getRandomColor();
-        tiles.push(tileColor);
-      }
-
-      while (hasMatches(tiles)) {
-        for (let i = 0; i < tiles.length; i++) {
-          tiles[i] = getRandomColor();
-        }
-      }
-
-      tiles.forEach((color, index) => {
         const tile = document.createElement('div');
-        tile.classList.add('tile', color);
-        tile.dataset.index = index;
+        tile.classList.add('tile', getRandomColor()); // Добавляем случайный цвет
+        tile.dataset.index = i; // Устанавливаем индекс плитки
         gameContainer.appendChild(tile);
-      });
+      }
     }
 
+    // Генерация случайного цвета
     function getRandomColor() {
       return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    function hasMatches(tiles) {
-      const visited = new Set();
-      for (let i = 0; i < tiles.length; i++) {
-        if (findMatch(i, tiles[i], visited, tiles).length >= 3) {
-          return true;
-        }
+    // Глобальные переменные для сенсорного управления
+    let draggedTile = null;
+    let startX, startY;
+
+    // Обработчик начала касания
+    function handleTouchStart(e) {
+      e.preventDefault(); // Предотвращаем скроллинг страницы
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+
+      const targetTile = document.elementFromPoint(startX, startY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        draggedTile = targetTile;
+        draggedTile.style.opacity = '0.5'; // Визуальная обратная связь
       }
-      return false;
     }
 
+    // Обработчик перемещения пальца
+    function handleTouchMove(e) {
+      if (!draggedTile) return;
+
+      const touch = e.touches[0];
+      const currentX = touch.clientX;
+      const currentY = touch.clientY;
+
+      // Определяем направление движения
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Горизонтальное движение
+        if (deltaX > 50) {
+          swapTiles(draggedTile, 'right');
+        } else if (deltaX < -50) {
+          swapTiles(draggedTile, 'left');
+        }
+      } else {
+        // Вертикальное движение
+        if (deltaY > 50) {
+          swapTiles(draggedTile, 'down');
+        } else if (deltaY < -50) {
+          swapTiles(draggedTile, 'up');
+        }
+      }
+    }
+
+    // Обработчик окончания касания
+    function handleTouchEnd() {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null;
+      }
+    }
+
+    // Функция для обмена плитками
+    function swapTiles(tile, direction) {
+      const index = parseInt(tile.dataset.index);
+      let targetIndex;
+
+      switch (direction) {
+        case 'up':
+          targetIndex = index - gridSize;
+          break;
+        case 'down':
+          targetIndex = index + gridSize;
+          break;
+        case 'left':
+          targetIndex = index - 1;
+          break;
+        case 'right':
+          targetIndex = index + 1;
+          break;
+        default:
+          return;
+      }
+
+      if (!isValidMove(index, targetIndex)) {
+        tile.classList.add('error-animation'); // Анимация ошибки
+        setTimeout(() => tile.classList.remove('error-animation'), 300);
+        return;
+      }
+
+      const targetTile = gameContainer.children[targetIndex];
+      if (targetTile) {
+        const tempColor = tile.classList[1];
+        tile.classList.replace(tile.classList[1], targetTile.classList[1]);
+        targetTile.classList.replace(targetTile.classList[1], tempColor);
+
+        checkMatches();
+      }
+    }
+
+    // Проверка допустимости хода
+    function isValidMove(index1, index2) {
+      if (index2 < 0 || index2 >= gridSize * gridSize) return false;
+
+      const row1 = Math.floor(index1 / gridSize);
+      const col1 = index1 % gridSize;
+      const row2 = Math.floor(index2 / gridSize);
+      const col2 = index2 % gridSize;
+
+      return (
+        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
+        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
+      );
+    }
+
+    // Проверка совпадений через DFS
+    function checkMatches() {
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+      const visited = new Set();
+      const matches = [];
+
+      for (let i = 0; i < tiles.length; i++) {
+        const match = findMatch(i, tiles[i].classList[1], visited, tiles);
+        if (match.length >= 3) {
+          matches.push(...match);
+        }
+      }
+
+      if (matches.length > 0) {
+        removeMatch(matches);
+      }
+    }
+
+    // Поиск совпадений рекурсивно
     function findMatch(index, color, visited, tiles) {
       if (!color || visited.has(index)) return [];
       visited.add(index);
@@ -116,7 +239,7 @@
         if (
           neighborIndex >= 0 &&
           neighborIndex < tiles.length &&
-          tiles[neighborIndex] === color
+          tiles[neighborIndex].classList[1] === color
         ) {
           matches.push(...findMatch(neighborIndex, color, visited, tiles));
         }
@@ -125,119 +248,47 @@
       return matches;
     }
 
-    // Обработка перемещения плиток
-    let draggedTile = null;
-
-    gameContainer.addEventListener('mousedown', (e) => {
-      draggedTile = e.target.closest('.tile');
-    });
-
-    gameContainer.addEventListener('mousemove', (e) => {
-      if (!draggedTile) return;
-      const targetTile = document.elementFromPoint(e.clientX, e.clientY);
-      if (targetTile && targetTile.classList.contains('tile')) {
-        swapTiles(draggedTile, targetTile);
-      }
-    });
-
-    gameContainer.addEventListener('mouseup', () => {
-      draggedTile = null;
-    });
-
-    function swapTiles(tile1, tile2) {
-      const index1 = parseInt(tile1.dataset.index);
-      const index2 = parseInt(tile2.dataset.index);
-
-      if (!isValidMove(index1, index2)) return;
-
-      const tempColor = tile1.classList[1];
-      tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-      tile2.classList.replace(tile2.classList[1], tempColor);
-
-      checkMatches(tile1, tile2);
-    }
-
-    function isValidMove(index1, index2) {
-      const row1 = Math.floor(index1 / gridSize);
-      const col1 = index1 % gridSize;
-      const row2 = Math.floor(index2 / gridSize);
-      const col2 = index2 % gridSize;
-
-      return (
-        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
-        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
-      );
-    }
-
-    // Проверка совпадений с каскадом
-    function checkMatches(tile1, tile2) {
-      let anyMatches = true;
-
-      while (anyMatches) {
-        anyMatches = false;
-        const tiles = Array.from(document.querySelectorAll('.tile'));
-        const visited = new Set();
-        const matches = [];
-
-        for (let i = 0; i < tiles.length; i++) {
-          const match = findMatch(i, tiles[i].classList[1], visited, tiles);
-          if (match.length >= 3) {
-            matches.push(...match);
-            anyMatches = true;
-          }
-        }
-
-        if (matches.length > 0) {
-          removeMatch(matches);
-        }
-      }
-
-      rearrangeTiles();
-    }
-
     // Удаление совпадений
     function removeMatch(matchedIndices) {
       matchedIndices.forEach((index) => {
         const tile = gameContainer.children[index];
         tile.classList.remove(tile.classList[1]);
-        tile.style.animation = 'fade-out 0.5s ease forwards';
+        tile.classList.add(getRandomColor());
+        tile.style.animation = 'fade-out 0.5s ease forwards'; // Анимация удаления
         setTimeout(() => (tile.style.animation = ''), 500);
       });
-
-      score += matchedIndices.length * 10;
+      score += matchedIndices.length * 10; // Начисление очков
       scoreDisplay.textContent = score;
     }
 
-    // Перераспределение плиток
-    function rearrangeTiles() {
-      const tiles = Array.from(document.querySelectorAll('.tile'));
+    // Сохранение прогресса
+    function saveProgress() {
+      localStorage.setItem('puzzleGameScore', score);
+    }
 
-      for (let col = 0; col < gridSize; col++) {
-        let emptySpaces = 0;
-
-        for (let row = gridSize - 1; row >= 0; row--) {
-          const index = row * gridSize + col;
-          const tile = tiles[index];
-
-          if (!tile.classList[1]) {
-            emptySpaces++;
-          } else if (emptySpaces > 0) {
-            const currentColor = tile.classList[1];
-            tile.classList.remove(currentColor);
-            tiles[index - emptySpaces * gridSize].classList.add(currentColor);
-            tile.classList.remove(currentColor);
-          }
-        }
-
-        for (let i = 0; i < emptySpaces; i++) {
-          const newIndex = i * gridSize + col;
-          tiles[newIndex].classList.remove(tiles[newIndex].classList[1]);
-          tiles[newIndex].classList.add(getRandomColor());
-        }
+    function loadProgress() {
+      const savedScore = localStorage.getItem('puzzleGameScore');
+      if (savedScore) {
+        score = parseInt(savedScore);
+        scoreDisplay.textContent = score;
       }
     }
 
+    // Инициализация игры
+    window.addEventListener('beforeunload', saveProgress); // Сохраняем прогресс перед выходом
+    loadProgress(); // Загружаем сохраненный прогресс
     createGrid();
+
+    // Добавляем обработчики событий для сенсорного управления
+    gameContainer.addEventListener('touchstart', handleTouchStart);
+    gameContainer.addEventListener('touchmove', handleTouchMove);
+    gameContainer.addEventListener('touchend', handleTouchEnd);
+
+    // Комментарии для будущих доработок:
+    // 1. Добавить таймер или ограничение по количеству ходов.
+    // 2. Реализовать систему уровней.
+    // 3. Добавить звуковые эффекты для создания совпадений и ошибок.
+    // 4. Оптимизировать проверку совпадений для больших сеток.
   </script>
 </body>
 </html>
