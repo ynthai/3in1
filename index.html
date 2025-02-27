@@ -1,101 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minimalist Puzzle Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
-      font-family: 'Helvetica', sans-serif;
-    }
+    <meta charset="UTF-8">
+    <title>Puzzle & Dragons</title>
+    <!-- Стили для игры -->
+    <style>
+        /* Основной контейнер игрового поля */
+        #game-container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 300px;
+            height: 300px;
+            border: 2px solid black;
+        }
 
-    .game-container {
-      display: grid;
-      grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(6, 50px);
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
+        /* Клетки игрового поля */
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid gray;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+        }
 
-    .tile {
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
+        /* Цвета для различных типов элементов */
+        .fire { background-color: red; }
+        .water { background-color: blue; }
+        .wood { background-color: green; }
+        .light { background-color: yellow; }
+        .dark { background-color: purple; }
 
-    .tile:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
+        /* Панель управления */
+        #controls {
+            margin-top: 20px;
+        }
 
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
-  </style>
+        /* Радиокнопки выбора стиля игры */
+        .style-option {
+            margin-right: 10px;
+        }
+    </style>
 </head>
 <body>
+    <div id="game-container"></div>
+    <div id="controls">
+        <!-- Выбор стиля игры -->
+        <label class="style-option">
+            <input type="radio" name="game-style" value="classic" checked> Classic
+        </label>
+        <label class="style-option">
+            <input type="radio" name="game-style" value="modern"> Modern
+        </label>
+    </div>
 
-<div class="game-container" id="game-container"></div>
+    <script>
+        // Размер игрового поля (количество клеток по горизонтали и вертикали)
+        const gridSize = 6;
 
-<script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let selectedTile = null;
+        // Элементы игрового поля
+        const gameContainer = document.getElementById('game-container');
 
-  // Create the game grid
-  function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    }
-  }
+        // Создание игрового поля
+        function createGameGrid() {
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.type = getRandomType(); // Присвоение случайного типа клетке
+                cell.addEventListener('click', handleCellClick); // Обработка клика на клетку
+                gameContainer.appendChild(cell);
+            }
+        }
 
-  // Get a random color from the colors array
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+        // Получение случайного типа элемента (огонь, вода, дерево, свет, тьма)
+        function getRandomType() {
+            const types = ['fire', 'water', 'wood', 'light', 'dark'];
+            return types[Math.floor(Math.random() * types.length)];
+        }
 
-  // Select a tile to swap
-  function selectTile(e) {
-    if (!selectedTile) {
-      selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const currentTile = e.target;
-      if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
-      }
-      selectedTile.style.border = '';
-      selectedTile = null;
-    }
-  }
+        // Обработка клика на клетку (заглушка для дальнейшего расширения логики)
+        function handleCellClick(event) {
+            console.log(`Clicked on cell with type: ${event.target.dataset.type}`);
+        }
 
-  // Initialize the game
-  createGrid();
-</script>
+        // Сохранение выбранного стиля игры в localStorage
+        function saveGameStyle(style) {
+            localStorage.setItem('selectedGameStyle', style);
+        }
 
+        // Загрузка сохраненного стиля игры из localStorage
+        function loadGameStyle() {
+            return localStorage.getItem('selectedGameStyle') || 'classic';
+        }
+
+        // Установка активного стиля игры
+        function setGameStyle(style) {
+            document.querySelectorAll('input[name="game-style"]').forEach(radio => {
+                radio.checked = radio.value === style;
+            });
+        }
+
+        // Инициализация игры
+        function initGame() {
+            createGameGrid();
+
+            // Загрузка сохраненного стиля игры
+            const savedStyle = loadGameStyle();
+            setGameStyle(savedStyle);
+
+            // Обработка изменения стиля игры
+            document.querySelectorAll('input[name="game-style"]').forEach(radio => {
+                radio.addEventListener('change', event => {
+                    saveGameStyle(event.target.value);
+                });
+            });
+        }
+
+        // Запуск игры
+        initGame();
+    </script>
 </body>
 </html>
