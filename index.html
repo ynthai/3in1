@@ -9,8 +9,9 @@
       margin: 0;
       padding: 0;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       height: 100vh;
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
@@ -33,6 +34,7 @@
       align-items: center;
       font-size: 24px;
       font-weight: bold;
+      transition: transform 0.3s ease, opacity 0.3s ease;
     }
 
     .red { background-color: #ff5733; color: white; }
@@ -45,6 +47,21 @@
       margin-top: 20px;
       font-size: 20px;
       font-weight: bold;
+    }
+
+    .error-animation {
+      animation: error-shake 0.3s ease;
+    }
+
+    @keyframes error-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    @keyframes fade-out {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0); }
     }
   </style>
 </head>
@@ -65,11 +82,7 @@
       for (let i = 0; i < gridSize * gridSize; i++) {
         const tile = document.createElement('div');
         tile.classList.add('tile', getRandomColor());
-        tile.setAttribute('draggable', true);
         tile.dataset.index = i;
-        tile.addEventListener('dragstart', dragStart);
-        tile.addEventListener('dragover', dragOver);
-        tile.addEventListener('drop', dropTile);
         gameContainer.appendChild(tile);
       }
     }
@@ -80,94 +93,158 @@
 
     let draggedTile = null;
 
-    function dragStart(e) {
-      draggedTile = e.target;
-      setTimeout(() => (e.target.style.visibility = 'hidden'), 0);
+    // Сенсорное управление
+    function handleTouchStart(e) {
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        draggedTile = targetTile;
+        draggedTile.style.opacity = '0.5';
+      }
     }
 
-    function dragOver(e) {
-      e.preventDefault();
+    function handleTouchMove(e) {
+      if (!draggedTile) return;
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
     }
 
-    function dropTile(e) {
-      const targetTile = e.target;
+    function handleTouchEnd() {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null;
+      }
+    }
 
-      if (!targetTile.classList.contains('tile')) return;
+    // Управление мышью
+    gameContainer.addEventListener('mousedown', (e) => {
+      draggedTile = e.target.closest('.tile');
+      if (draggedTile) draggedTile.style.opacity = '0.5';
+    });
 
-      const draggedIndex = parseInt(draggedTile.dataset.index);
-      const targetIndex = parseInt(targetTile.dataset.index);
+    gameContainer.addEventListener('mousemove', (e) => {
+      if (!draggedTile) return;
+      const targetTile = document.elementFromPoint(e.clientX, e.clientY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
+    });
 
-      const validMoves = [
-        draggedIndex - 1,
-        draggedIndex + 1,
-        draggedIndex - gridSize,
-        draggedIndex + gridSize,
-      ];
+    gameContainer.addEventListener('mouseup', () => {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null;
+      }
+    });
 
-      if (validMoves.includes(targetIndex)) {
-        const draggedColor = draggedTile.classList[1];
-        const targetColor = targetTile.classList[1];
+    // Обработка перемещения плиток
+    function swapTiles(tile1, tile2) {
+      const index1 = parseInt(tile1.dataset.index);
+      const index2 = parseInt(tile2.dataset.index);
 
-        draggedTile.classList.remove(draggedColor);
-        targetTile.classList.remove(targetColor);
-
-        draggedTile.classList.add(targetColor);
-        targetTile.classList.add(draggedColor);
-
-        checkMatches();
+      if (!isValidMove(index1, index2)) {
+        tile1.classList.add('error-animation');
+        setTimeout(() => tile1.classList.remove('error-animation'), 300);
+        return;
       }
 
-      draggedTile.style.visibility = 'visible';
+      const tempColor = tile1.classList[1];
+      tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
+      tile2.classList.replace(tile2.classList[1], tempColor);
+
+      checkMatches();
     }
 
+    function isValidMove(index1, index2) {
+      const row1 = Math.floor(index1 / gridSize);
+      const col1 = index1 % gridSize;
+      const row2 = Math.floor(index2 / gridSize);
+      const col2 = index2 % gridSize;
+
+      return (
+        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
+        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
+      );
+    }
+
+    // Проверка совпадений через DFS
     function checkMatches() {
       const tiles = Array.from(document.querySelectorAll('.tile'));
+      const visited = new Set();
+      const matches = [];
 
-      // Проверка горизонтальных совпадений
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col <= gridSize - 3; col++) {
-          const firstTile = tiles[row * gridSize + col];
-          const secondTile = tiles[row * gridSize + col + 1];
-          const thirdTile = tiles[row * gridSize + col + 2];
-
-          if (
-            firstTile.classList[1] &&
-            firstTile.classList[1] === secondTile.classList[1] &&
-            secondTile.classList[1] === thirdTile.classList[1]
-          ) {
-            removeMatch([firstTile, secondTile, thirdTile]);
-          }
+      for (let i = 0; i < tiles.length; i++) {
+        const match = findMatch(i, tiles[i].classList[1], visited, tiles);
+        if (match.length >= 3) {
+          matches.push(...match);
         }
       }
 
-      // Проверка вертикальных совпадений
-      for (let col = 0; col < gridSize; col++) {
-        for (let row = 0; row <= gridSize - 3; row++) {
-          const firstTile = tiles[row * gridSize + col];
-          const secondTile = tiles[(row + 1) * gridSize + col];
-          const thirdTile = tiles[(row + 2) * gridSize + col];
-
-          if (
-            firstTile.classList[1] &&
-            firstTile.classList[1] === secondTile.classList[1] &&
-            secondTile.classList[1] === thirdTile.classList[1]
-          ) {
-            removeMatch([firstTile, secondTile, thirdTile]);
-          }
-        }
+      if (matches.length > 0) {
+        removeMatch(matches);
       }
     }
 
-    function removeMatch(matchedTiles) {
-      matchedTiles.forEach((tile) => {
+    function findMatch(index, color, visited, tiles) {
+      if (!color || visited.has(index)) return [];
+      visited.add(index);
+
+      const matches = [index];
+      const directions = [-gridSize, -1, 1, gridSize]; // Вверх, влево, вправо, вниз
+
+      for (const dir of directions) {
+        const neighborIndex = index + dir;
+
+        if (
+          neighborIndex >= 0 &&
+          neighborIndex < tiles.length &&
+          tiles[neighborIndex].classList[1] === color
+        ) {
+          matches.push(...findMatch(neighborIndex, color, visited, tiles));
+        }
+      }
+
+      return matches;
+    }
+
+    function removeMatch(matchedIndices) {
+      matchedIndices.forEach((index) => {
+        const tile = gameContainer.children[index];
         tile.classList.remove(tile.classList[1]);
         tile.classList.add(getRandomColor());
+        tile.style.animation = 'fade-out 0.5s ease forwards';
+        setTimeout(() => (tile.style.animation = ''), 500);
       });
-      score += matchedTiles.length * 10;
+      score += matchedIndices.length * 10;
       scoreDisplay.textContent = score;
     }
 
+    // Сохранение прогресса
+    function saveProgress() {
+      localStorage.setItem('puzzleGameScore', score);
+    }
+
+    function loadProgress() {
+      const savedScore = localStorage.getItem('puzzleGameScore');
+      if (savedScore) {
+        score = parseInt(savedScore);
+        scoreDisplay.textContent = score;
+      }
+    }
+
+    window.addEventListener('beforeunload', saveProgress);
+    loadProgress();
+
     createGrid();
+
+    // Добавляем обработчики событий для сенсорного управления
+    gameContainer.addEventListener('touchstart', handleTouchStart);
+    gameContainer.addEventListener('touchmove', handleTouchMove);
+    gameContainer.addEventListener('touchend', handleTouchEnd);
   </script>
 </body>
 </html>
