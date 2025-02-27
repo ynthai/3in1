@@ -3,68 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iSafari Adventures</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
-    .safari-bar {
-      background: #fff;
-      border-bottom: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-    .safari-bar input {
-      border: none;
-      outline: none;
-      font-size: 16px;
-      width: 80%;
-      padding: 5px;
-      background: #f9f9f9;
-    }
+
     .game-container {
       display: grid;
       grid-template-columns: repeat(6, 50px);
-      grid-gap: 5px;
-      margin: 20px auto;
-      justify-content: center;
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+
     .tile {
       width: 50px;
       height: 50px;
-      background: #ccc;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <div class="safari-bar">
-    <input type="text" value="https://isafarigame.com" readonly>
-  </div>
-  <div class="game-container" id="game-board"></div>
 
-  <script>
-    const board = document.getElementById('game-board');
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+<div class="game-container" id="game-container"></div>
 
-    function createBoard() {
-      for (let i = 0; i < 30; i++) {
-        const tile = document.createElement('div');
-        tile.classList.add('tile');
-        tile.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        board.appendChild(tile);
-      }
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    createBoard();
-  </script>
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
+
+  // Initialize the game
+  createGrid();
+</script>
+
 </body>
 </html>
