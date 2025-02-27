@@ -77,7 +77,9 @@
     const gameContainer = document.getElementById('gameContainer');
     const scoreDisplay = document.getElementById('score');
 
-    // Создаем игровое поле
+    /**
+     * Создает игровое поле с заданным размером.
+     */
     function createGrid() {
       for (let i = 0; i < gridSize * gridSize; i++) {
         const tile = document.createElement('div');
@@ -87,40 +89,25 @@
       }
     }
 
+    /**
+     * Возвращает случайный цвет из массива colors.
+     */
     function getRandomColor() {
       return colors[Math.floor(Math.random() * colors.length)];
     }
 
     let draggedTile = null;
 
-    // Сенсорное управление
-    function handleTouchStart(e) {
-      const touch = e.touches[0];
-      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (targetTile && targetTile.classList.contains('tile')) {
-        draggedTile = targetTile;
-        draggedTile.style.opacity = '0.5';
-      }
-    }
+    /**
+     * Отключает пролистывание страницы на мобильных устройствах.
+     */
+    gameContainer.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
 
-    function handleTouchMove(e) {
-      if (!draggedTile) return;
-      const touch = e.touches[0];
-      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
-
-      if (targetTile && targetTile.classList.contains('tile')) {
-        swapTiles(draggedTile, targetTile);
-      }
-    }
-
-    function handleTouchEnd() {
-      if (draggedTile) {
-        draggedTile.style.opacity = '1';
-        draggedTile = null;
-      }
-    }
-
-    // Управление мышью
+    /**
+     * Обработка перемещения плиток через мышь или сенсорное управление.
+     */
     gameContainer.addEventListener('mousedown', (e) => {
       draggedTile = e.target.closest('.tile');
       if (draggedTile) draggedTile.style.opacity = '0.5';
@@ -141,7 +128,46 @@
       }
     });
 
-    // Обработка перемещения плиток
+    gameContainer.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      draggedTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (draggedTile) draggedTile.style.opacity = '0.5';
+    });
+
+    gameContainer.addEventListener('touchend', (e) => {
+      if (!draggedTile) return;
+      const touch = e.changedTouches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
+      draggedTile.style.opacity = '1';
+      draggedTile = null;
+    });
+
+    /**
+     * Проверяет, является ли движение допустимым.
+     * @param {number} index1 Индекс первой плитки
+     * @param {number} index2 Индекс второй плитки
+     * @returns {boolean} true, если движение допустимо
+     */
+    function isValidMove(index1, index2) {
+      const row1 = Math.floor(index1 / gridSize);
+      const col1 = index1 % gridSize;
+      const row2 = Math.floor(index2 / gridSize);
+      const col2 = index2 % gridSize;
+
+      return (
+        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
+        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
+      );
+    }
+
+    /**
+     * Меняет местами две плитки.
+     * @param {HTMLElement} tile1 Первая плитка
+     * @param {HTMLElement} tile2 Вторая плитка
+     */
     function swapTiles(tile1, tile2) {
       const index1 = parseInt(tile1.dataset.index);
       const index2 = parseInt(tile2.dataset.index);
@@ -156,39 +182,58 @@
       tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
       tile2.classList.replace(tile2.classList[1], tempColor);
 
-      checkMatches();
+      checkMatches(index1);
     }
 
-    function isValidMove(index1, index2) {
-      const row1 = Math.floor(index1 / gridSize);
-      const col1 = index1 % gridSize;
-      const row2 = Math.floor(index2 / gridSize);
-      const col2 = index2 % gridSize;
-
-      return (
-        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
-        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
-      );
-    }
-
-    // Проверка совпадений через DFS
-    function checkMatches() {
+    /**
+     * Проверяет наличие совпадений вокруг указанной плитки.
+     * @param {number} startIndex Индекс начальной плитки
+     */
+    function checkMatches(startIndex) {
       const tiles = Array.from(document.querySelectorAll('.tile'));
       const visited = new Set();
       const matches = [];
 
-      for (let i = 0; i < tiles.length; i++) {
-        const match = findMatch(i, tiles[i].classList[1], visited, tiles);
+      const neighbors = getNeighbors(startIndex);
+
+      for (const neighbor of neighbors) {
+        const match = findMatch(neighbor, tiles[neighbor].classList[1], visited, tiles);
         if (match.length >= 3) {
           matches.push(...match);
         }
       }
 
       if (matches.length > 0) {
-        removeMatch(matches);
+        removeMatch(matches, tiles);
       }
     }
 
+    /**
+     * Возвращает соседние индексы для заданного индекса.
+     * @param {number} index Индекс плитки
+     * @returns {number[]} Массив соседних индексов
+     */
+    function getNeighbors(index) {
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+
+      const neighbors = [];
+      if (row > 0) neighbors.push(index - gridSize); // Верх
+      if (row < gridSize - 1) neighbors.push(index + gridSize); // Низ
+      if (col > 0) neighbors.push(index - 1); // Лево
+      if (col < gridSize - 1) neighbors.push(index + 1); // Право
+
+      return neighbors;
+    }
+
+    /**
+     * Находит все связанные плитки одного цвета через DFS.
+     * @param {number} index Индекс текущей плитки
+     * @param {string} color Цвет текущей плитки
+     * @param {Set} visited Множество посещенных индексов
+     * @param {HTMLElement[]} tiles Массив всех плиток
+     * @returns {number[]} Массив индексов совпавших плиток
+     */
     function findMatch(index, color, visited, tiles) {
       if (!color || visited.has(index)) return [];
       visited.add(index);
@@ -211,23 +256,51 @@
       return matches;
     }
 
-    function removeMatch(matchedIndices) {
-      matchedIndices.forEach((index) => {
-        const tile = gameContainer.children[index];
-        tile.classList.remove(tile.classList[1]);
-        tile.classList.add(getRandomColor());
-        tile.style.animation = 'fade-out 0.5s ease forwards';
-        setTimeout(() => (tile.style.animation = ''), 500);
+    /**
+     * Удаляет найденные совпадения и добавляет новые плитки.
+     * @param {number[]} matches Индексы совпавших плиток
+     * @param {HTMLElement[]} tiles Массив всех плиток
+     */
+    function removeMatch(matches, tiles) {
+      const uniqueColors = [...new Set(matches.map((index) => tiles[index].classList[1]))];
+
+      function animateColor(color, delay) {
+        setTimeout(() => {
+          matches
+            .filter((index) => tiles[index].classList[1] === color)
+            .forEach((index) => {
+              const tile = tiles[index];
+              tile.style.animation = 'fade-out 0.5s ease forwards';
+              setTimeout(() => {
+                tile.classList.remove(tile.classList[1]);
+                tile.classList.add(getRandomColor());
+                tile.style.animation = '';
+              }, 500);
+            });
+        }, delay);
+      }
+
+      let delay = 0;
+      uniqueColors.forEach((color) => {
+        animateColor(color, delay);
+        delay += 500; // Задержка между анимациями
       });
-      score += matchedIndices.length * 10;
-      scoreDisplay.textContent = score;
+
+      setTimeout(() => {
+        checkMatches(-1); // Проверяем все плитки после удаления
+      }, 1000);
     }
 
-    // Сохранение прогресса
+    /**
+     * Сохраняет прогресс в localStorage.
+     */
     function saveProgress() {
       localStorage.setItem('puzzleGameScore', score);
     }
 
+    /**
+     * Загружает прогресс из localStorage.
+     */
     function loadProgress() {
       const savedScore = localStorage.getItem('puzzleGameScore');
       if (savedScore) {
@@ -240,11 +313,6 @@
     loadProgress();
 
     createGrid();
-
-    // Добавляем обработчики событий для сенсорного управления
-    gameContainer.addEventListener('touchstart', handleTouchStart);
-    gameContainer.addEventListener('touchmove', handleTouchMove);
-    gameContainer.addEventListener('touchend', handleTouchEnd);
   </script>
 </body>
 </html>
