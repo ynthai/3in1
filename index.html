@@ -85,6 +85,7 @@
       return colors[Math.floor(Math.random() * colors.length)];
     }
 
+    // Удаление совпадений и анимация
     function removeMatch(matchedIndices) {
       const tiles = Array.from(document.querySelectorAll('.tile'));
 
@@ -98,6 +99,7 @@
       setTimeout(() => dropTiles(tiles), 500);
     }
 
+    // Анимация падения плиток
     function dropTiles(tiles) {
       let isDropped = true;
 
@@ -131,6 +133,7 @@
       setTimeout(() => fillEmptySpaces(tiles), 300);
     }
 
+    // Заполнение пустых ячеек новыми плитками
     function fillEmptySpaces(tiles) {
       tiles.forEach((tile, index) => {
         if (tile.classList.contains('empty')) {
@@ -150,6 +153,7 @@
       });
     }
 
+    // Проверка совпадений через DFS
     function checkMatches() {
       const tiles = Array.from(document.querySelectorAll('.tile'));
       const visited = new Set();
@@ -191,12 +195,49 @@
       return matches;
     }
 
+    // МОБИЛЬНОЕ УПРАВЛЕНИЕ: Обработка нажатий и перемещений
+    let draggedTile = null;
+
+    function handleTouchStart(e) {
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      if (targetTile && targetTile.classList.contains('tile')) {
+        draggedTile = targetTile;
+        draggedTile.style.opacity = '0.5'; // Визуальный эффект при перетаскивании
+      }
+    }
+
+    function handleTouchMove(e) {
+      if (!draggedTile) return;
+
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
+    }
+
+    function handleTouchEnd() {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null; // Сброс состояния перетаскивания
+      }
+    }
+
+    // МОБИЛЬНОЕ УПРАВЛЕНИЕ: Добавление событий touch
+    gameContainer.addEventListener('touchstart', handleTouchStart);
+    gameContainer.addEventListener('touchmove', handleTouchMove);
+    gameContainer.addEventListener('touchend', handleTouchEnd);
+
+    // Обработка перемещения плиток
     function swapTiles(tile1, tile2) {
       const index1 = parseInt(tile1.dataset.index);
       const index2 = parseInt(tile2.dataset.index);
 
       if (!isValidMove(index1, index2)) {
-        tile1.classList.add('error-animation');
+        tile1.classList.add('error-animation'); // Анимация ошибки
         setTimeout(() => tile1.classList.remove('error-animation'), 300);
         return;
       }
@@ -205,7 +246,7 @@
       tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
       tile2.classList.replace(tile2.classList[1], tempColor);
 
-      checkMatches();
+      checkMatches(); // Проверка совпадений после перемещения
     }
 
     function isValidMove(index1, index2) {
@@ -219,26 +260,6 @@
         (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
       );
     }
-
-    gameContainer.addEventListener('mousedown', (e) => {
-      draggedTile = e.target.closest('.tile');
-      if (draggedTile) draggedTile.style.opacity = '0.5';
-    });
-
-    gameContainer.addEventListener('mousemove', (e) => {
-      if (!draggedTile) return;
-      const targetTile = document.elementFromPoint(e.clientX, e.clientY);
-      if (targetTile && targetTile.classList.contains('tile')) {
-        swapTiles(draggedTile, targetTile);
-      }
-    });
-
-    gameContainer.addEventListener('mouseup', () => {
-      if (draggedTile) {
-        draggedTile.style.opacity = '1';
-        draggedTile = null;
-      }
-    });
 
     createGrid();
   </script>
