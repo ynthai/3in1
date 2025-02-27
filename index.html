@@ -1,122 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzle & Dragons</title>
-    <!-- Стили CSS будут подключены позже -->
-    <style>
-        /* Основной стиль для игрового поля */
-        .game-container {
-            display: grid;
-            grid-template-columns: repeat(6, 50px); /* Размер сетки 6x6 */
-            grid-gap: 5px; /* Промежуток между ячейками */
-            justify-content: center;
-            margin: 20px auto;
-            width: fit-content;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
+    }
 
-        /* Стиль для отдельных плиток */
-        .tile {
-            width: 50px;
-            height: 50px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 
-        /* Активный стиль для выбранной плитки */
-        .tile.active {
-            background-color: #ffcccb; /* Цвет при выборе плитки */
-        }
-    </style>
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
 </head>
 <body>
-    <h1>Puzzle & Dragons</h1>
-    <p>Выберите стиль игры:</p>
-    <div>
-        <!-- Выбор стиля игры -->
-        <label><input type="radio" name="game-style" value="classic" checked> Классический режим</label>
-        <label><input type="radio" name="game-style" value="timed"> Режим с таймером</label>
-    </div>
 
-    <div class="game-container" id="game-board">
-        <!-- Игровое поле будет动生成иться динамически -->
-    </div>
+<div class="game-container" id="game-container"></div>
 
-    <script>
-        // Глобальная переменная для хранения выбранного стиля игры
-        let selectedGameStyle = 'classic'; // По умолчанию классический режим
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-        // Функция для создания игрового поля
-        function createGameBoard() {
-            const gameBoard = document.getElementById('game-board');
-            gameBoard.innerHTML = ''; // Очищаем текущее поле
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
 
-            // Создаем сетку 6x6
-            for (let i = 0; i < 36; i++) {
-                const tile = document.createElement('div');
-                tile.classList.add('tile');
-                tile.textContent = '○'; // Временный символ для плитки
-                tile.addEventListener('click', () => handleTileClick(tile));
-                gameBoard.appendChild(tile);
-            }
-        }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-        // Обработчик клика по плитке
-        function handleTileClick(tile) {
-            if (!tile.classList.contains('active')) {
-                // Если плитка не активна, делаем ее активной
-                tile.classList.add('active');
-            } else {
-                // Если плитка уже активна, деактивируем ее
-                tile.classList.remove('active');
-            }
-        }
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
 
-        // Сохранение выбранного стиля игры
-        function saveGameStyle() {
-            const radios = document.querySelectorAll('input[name="game-style"]');
-            radios.forEach(radio => {
-                if (radio.checked) {
-                    selectedGameStyle = radio.value; // Сохраняем выбранный стиль
-                    localStorage.setItem('selectedGameStyle', selectedGameStyle); // Сохраняем в localStorage
-                }
-            });
-        }
+  // Initialize the game
+  createGrid();
+</script>
 
-        // Загрузка сохраненного стиля игры
-        function loadGameStyle() {
-            const savedStyle = localStorage.getItem('selectedGameStyle');
-            if (savedStyle) {
-                selectedGameStyle = savedStyle;
-                const radios = document.querySelectorAll('input[name="game-style"]');
-                radios.forEach(radio => {
-                    if (radio.value === savedStyle) {
-                        radio.checked = true; // Устанавливаем радио кнопку как выбранную
-                    }
-                });
-            }
-        }
-
-        // Инициализация игры
-        function initGame() {
-            loadGameStyle(); // Загружаем сохраненный стиль игры
-            createGameBoard(); // Создаем игровое поле
-        }
-
-        // Добавляем слушателя для изменения стиля игры
-        document.querySelectorAll('input[name="game-style"]').forEach(radio => {
-            radio.addEventListener('change', saveGameStyle);
-        });
-
-        // Запускаем игру
-        initGame();
-    </script>
 </body>
 </html>
