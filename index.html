@@ -1,101 +1,253 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minimalist Puzzle Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
-      font-family: 'Helvetica', sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle & Dragons</title>
+    <style>
+        /* Общие стили */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
 
-    .game-container {
-      display: grid;
-      grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(6, 50px);
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
+        /* Контейнер игры */
+        #game-container {
+            width: 400px; /* Начальный размер контейнера */
+            height: 600px; /* Начальный размер контейнера */
+            border: 2px solid #000;
+            background-color: #fff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-    .tile {
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
+        /* Счетчик очков */
+        #score {
+            font-size: 24px;
+            margin: 10px 0;
+        }
 
-    .tile:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
-  </style>
+        /* Игровое поле (canvas) */
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
 </head>
 <body>
+    <!-- Основной контейнер игры -->
+    <div id="game-container">
+        <h1>Score: <span id="score">0</span></h1> <!-- Элемент для отображения очков -->
+        <canvas id="game-canvas"></canvas> <!-- Игровое поле -->
+    </div>
 
-<div class="game-container" id="game-container"></div>
+    <script>
+        // Инициализация игры
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
 
-<script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let selectedTile = null;
+        // Размеры игрового поля
+        const ROWS = 5; // Количество строк
+        const COLS = 6; // Количество столбцов
+        let TILE_SIZE = 64; // Размер одной ячейки (будет динамически изменяться)
 
-  // Create the game grid
-  function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    }
-  }
+        // Массив для хранения игровых элементов
+        let gameGrid = [];
 
-  // Get a random color from the colors array
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+        // Переменные для отслеживания кликов
+        let selectedTile = null; // Выбранный тайл (координаты [row, col])
+        let isSwapping = false; // Флаг, указывающий, происходит ли обмен
 
-  // Select a tile to swap
-  function selectTile(e) {
-    if (!selectedTile) {
-      selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const currentTile = e.target;
-      if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
-      }
-      selectedTile.style.border = '';
-      selectedTile = null;
-    }
-  }
+        // Счетчик очков
+        let score = 0;
 
-  // Initialize the game
-  createGrid();
-</script>
+        // Функция обновления счетчика
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score').textContent = score;
+        }
 
+        // Функция инициализации игрового поля
+        function initGame() {
+            resizeCanvas(); // Адаптируем размер канвы под окно браузера
+
+            // Заполняем массив случайными значениями
+            for (let row = 0; row < ROWS; row++) {
+                gameGrid[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    gameGrid[row][col] = Math.floor(Math.random() * 5) + 1; // Случайное число от 1 до 5
+                }
+            }
+
+            drawGrid(); // Рисуем сетку
+        }
+
+        // Функция отрисовки сетки
+        function drawGrid() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = col * TILE_SIZE; // Координата X
+                    const y = row * TILE_SIZE; // Координата Y
+
+                    // Определяем цвет тайла
+                    const COLORS = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'];
+                    ctx.fillStyle = COLORS[gameGrid[row][col] - 1]; // Выбираем цвет из массива
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE); // Рисуем прямоугольник
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE); // Рисуем границу
+                }
+            }
+        }
+
+        // Обработка кликов на канве
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect(); // Получаем координаты канвы относительно окна
+            const x = event.clientX - rect.left; // Координата X клика
+            const y = event.clientY - rect.top; // Координата Y клика
+            const col = Math.floor(x / TILE_SIZE); // Определяем номер столбца
+            const row = Math.floor(y / TILE_SIZE); // Определяем номер строки
+
+            if (row >= 0 && row < ROWS && col >= 0 && col < COLS) { // Проверяем, что клик внутри поля
+                if (!selectedTile) {
+                    // Если первый клик, запоминаем выбранный тайл
+                    selectedTile = [row, col];
+                    console.log(`Selected tile: (${row}, ${col})`);
+                } else {
+                    // Если второй клик, проверяем возможность обмена
+                    const [selectedRow, selectedCol] = selectedTile;
+
+                    // Проверяем, что выбранные тайлы находятся рядом
+                    if (
+                        (Math.abs(row - selectedRow) === 1 && col === selectedCol) || // Вертикальный обмен
+                        (Math.abs(col - selectedCol) === 1 && row === selectedRow)    // Горизонтальный обмен
+                    ) {
+                        swapTiles(selectedRow, selectedCol, row, col); // Обмениваем тайлы
+                    } else {
+                        console.log('Invalid move!');
+                    }
+
+                    selectedTile = null; // Сбрасываем выбранный тайл
+                }
+            }
+        });
+
+        // Функция обмена тайлов
+        function swapTiles(row1, col1, row2, col2) {
+            // Сохраняем временные значения
+            const temp = gameGrid[row1][col1];
+            gameGrid[row1][col1] = gameGrid[row2][col2];
+            gameGrid[row2][col2] = temp;
+
+            console.log(`Swapped tiles: (${row1}, ${col1}) and (${row2}, ${col2})`);
+
+            // Перерисовываем сетку
+            drawGrid();
+
+            // Проверяем совпадения после обмена
+            checkMatches();
+        }
+
+        // Функция проверки совпадений
+        function checkMatches() {
+            let hasMatches = false;
+
+            // Проверяем горизонтальные совпадения
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col <= COLS - 3; col++) {
+                    if (
+                        gameGrid[row][col] &&
+                        gameGrid[row][col] === gameGrid[row][col + 1] &&
+                        gameGrid[row][col] === gameGrid[row][col + 2]
+                    ) {
+                        console.log(`Match found at (${row}, ${col}) - (${row}, ${col + 2})`);
+                        hasMatches = true;
+                        clearMatch(row, col, row, col + 2); // Очищаем совпадение
+                        updateScore(10); // Добавляем 10 очков за совпадение
+                    }
+                }
+            }
+
+            // Проверяем вертикальные совпадения
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row <= ROWS - 3; row++) {
+                    if (
+                        gameGrid[row][col] &&
+                        gameGrid[row][col] === gameGrid[row + 1][col] &&
+                        gameGrid[row][col] === gameGrid[row + 2][col]
+                    ) {
+                        console.log(`Match found at (${row}, ${col}) - (${row + 2}, ${col})`);
+                        hasMatches = true;
+                        clearMatch(row, col, row + 2, col); // Очищаем совпадение
+                        updateScore(10); // Добавляем 10 очков за совпадение
+                    }
+                }
+            }
+
+            if (hasMatches) {
+                refillGrid(); // Заполняем пустые места новыми тайлами
+            }
+        }
+
+        // Функция очистки совпадений
+        function clearMatch(startRow, startCol, endRow, endCol) {
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    gameGrid[row][col] = 0; // Устанавливаем значение 0 для удаленного тайла
+                }
+            }
+
+            drawGrid(); // Перерисовываем сетку
+        }
+
+        // Функция заполнения пустых мест
+        function refillGrid() {
+            for (let col = 0; col < COLS; col++) {
+                for (let row = ROWS - 1; row >= 0; row--) {
+                    if (gameGrid[row][col] === 0) {
+                        // Находим первый непустой тайл сверху
+                        for (let r = row - 1; r >= 0; r--) {
+                            if (gameGrid[r][col] !== 0) {
+                                gameGrid[row][col] = gameGrid[r][col];
+                                gameGrid[r][col] = 0;
+                                break;
+                            }
+                        }
+
+                        // Если нет непустых тайлов, создаем новый
+                        if (gameGrid[row][col] === 0) {
+                            gameGrid[row][col] = Math.floor(Math.random() * 5) + 1;
+                        }
+                    }
+                }
+            }
+
+            drawGrid(); // Перерисовываем сетку
+        }
+
+        // Адаптивность
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            const maxWidth = container.clientWidth;
+            const maxHeight = container.clientHeight;
+
+            TILE_SIZE = Math.min(maxWidth / COLS, maxHeight / ROWS); // Вычисляем оптимальный размер тайла
+            canvas.width = COLS * TILE_SIZE; // Обновляем размер канвы
+            canvas.height = ROWS * TILE_SIZE;
+        }
+
+        window.addEventListener('resize', resizeCanvas); // Слушаем событие изменения размера окна
+        resizeCanvas(); // Вызываем функцию при загрузке страницы
+
+        // Запуск игры
+        initGame();
+    </script>
 </body>
 </html>
