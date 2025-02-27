@@ -43,15 +43,20 @@
     .yellow { background-color: #ffff33; color: black; }
     .purple { background-color: #b333ff; color: white; }
 
-    .empty {
-      background-color: transparent !important;
-      pointer-events: none;
-    }
-
     .score-board {
       margin-top: 20px;
       font-size: 20px;
       font-weight: bold;
+    }
+
+    .error-animation {
+      animation: error-shake 0.3s ease;
+    }
+
+    @keyframes error-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
     }
 
     @keyframes fade-out {
@@ -85,91 +90,98 @@
       return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    // Удаление совпадений и анимация
-    function removeMatch(matchedIndices) {
-      const tiles = Array.from(document.querySelectorAll('.tile'));
+    let draggedTile = null;
 
-      matchedIndices.forEach((index) => {
-        const tile = tiles[index];
-        tile.classList.remove(tile.classList[1]);
-        tile.style.animation = 'fade-out 0.5s ease forwards';
-        setTimeout(() => (tile.classList.add('empty')), 500);
-      });
-
-      setTimeout(() => dropTiles(tiles), 500);
+    function handleTouchStart(e) {
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        draggedTile = targetTile;
+        draggedTile.style.opacity = '0.5';
+      }
     }
 
-    // Анимация падения плиток
-    function dropTiles(tiles) {
-      let isDropped = true;
+    function handleTouchMove(e) {
+      if (!draggedTile) return;
+      const touch = e.touches[0];
+      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
 
-      while (isDropped) {
-        isDropped = false;
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
+    }
 
-        for (let i = 0; i < tiles.length; i++) {
-          if (!tiles[i].classList.contains('empty')) continue;
+    function handleTouchEnd() {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null;
+      }
+    }
 
-          const aboveIndex = i - gridSize;
-          if (aboveIndex >= 0 && !tiles[aboveIndex].classList.contains('empty')) {
-            const aboveTile = tiles[aboveIndex];
-            const currentTile = tiles[i];
+    gameContainer.addEventListener('mousedown', (e) => {
+      draggedTile = e.target.closest('.tile');
+      if (draggedTile) draggedTile.style.opacity = '0.5';
+    });
 
-            aboveTile.style.transition = 'transform 0.3s ease';
-            aboveTile.style.transform = `translateY(${60 + 5}px)`;
+    gameContainer.addEventListener('mousemove', (e) => {
+      if (!draggedTile) return;
+      const targetTile = document.elementFromPoint(e.clientX, e.clientY);
+      if (targetTile && targetTile.classList.contains('tile')) {
+        swapTiles(draggedTile, targetTile);
+      }
+    });
 
-            setTimeout(() => {
-              aboveTile.classList.remove(aboveTile.classList[1]);
-              currentTile.classList.remove('empty');
-              currentTile.classList.add(aboveTile.classList[1]);
-              aboveTile.classList.add('empty');
-              aboveTile.style.transform = '';
-            }, 300);
+    gameContainer.addEventListener('mouseup', () => {
+      if (draggedTile) {
+        draggedTile.style.opacity = '1';
+        draggedTile = null;
+      }
+    });
 
-            isDropped = true;
-          }
-        }
+    function swapTiles(tile1, tile2) {
+      const index1 = parseInt(tile1.dataset.index);
+      const index2 = parseInt(tile2.dataset.index);
+
+      if (!isValidMove(index1, index2)) {
+        tile1.classList.add('error-animation');
+        setTimeout(() => tile1.classList.remove('error-animation'), 300);
+        return;
       }
 
-      setTimeout(() => fillEmptySpaces(tiles), 300);
+      const tempColor = tile1.classList[1];
+      tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
+      tile2.classList.replace(tile2.classList[1], tempColor);
+
+      checkMatches();
     }
 
-    // Заполнение пустых ячеек новыми плитками
-    function fillEmptySpaces(tiles) {
-      tiles.forEach((tile, index) => {
-        if (tile.classList.contains('empty')) {
-          const newColor = getRandomColor();
-          tile.classList.remove('empty');
-          tile.classList.add(newColor);
+    function isValidMove(index1, index2) {
+      const row1 = Math.floor(index1 / gridSize);
+      const col1 = index1 % gridSize;
+      const row2 = Math.floor(index2 / gridSize);
+      const col2 = index2 % gridSize;
 
-          tile.style.opacity = '0';
-          tile.style.transform = 'scale(0)';
-          tile.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-
-          setTimeout(() => {
-            tile.style.opacity = '1';
-            tile.style.transform = 'scale(1)';
-          }, 100);
-        }
-      });
+      return (
+        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
+        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
+      );
     }
 
-    // Проверка совпадений через DFS
     function checkMatches() {
       const tiles = Array.from(document.querySelectorAll('.tile'));
       const visited = new Set();
-      const matches = [];
+      let anyMatches = false;
 
       for (let i = 0; i < tiles.length; i++) {
         const match = findMatch(i, tiles[i].classList[1], visited, tiles);
         if (match.length >= 3) {
-          matches.push(...match);
+          removeMatch(match);
+          anyMatches = true;
         }
       }
 
-      if (matches.length > 0) {
-        removeMatch(matches);
-        score += matches.length * 10;
-        scoreDisplay.textContent = score;
+      if (anyMatches) {
+        setTimeout(checkMatches, 500); // Проверяем снова после анимации
       }
     }
 
@@ -178,7 +190,7 @@
       visited.add(index);
 
       const matches = [index];
-      const directions = [-gridSize, -1, 1, gridSize];
+      const directions = [-gridSize, -1, 1, gridSize]; // Вверх, влево, вправо, вниз
 
       for (const dir of directions) {
         const neighborIndex = index + dir;
@@ -195,73 +207,90 @@
       return matches;
     }
 
-    // МОБИЛЬНОЕ УПРАВЛЕНИЕ: Обработка нажатий и перемещений
-    let draggedTile = null;
+    function removeMatch(matchedIndices) {
+      matchedIndices.forEach((index) => {
+        const tile = gameContainer.children[index];
+        tile.classList.remove(tile.classList[1]);
+        tile.style.animation = 'fade-out 0.5s ease forwards';
+        setTimeout(() => (tile.style.animation = ''), 500);
+      });
 
-    function handleTouchStart(e) {
-      const touch = e.touches[0];
-      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      score += matchedIndices.length * 10;
+      scoreDisplay.textContent = score;
 
-      if (targetTile && targetTile.classList.contains('tile')) {
-        draggedTile = targetTile;
-        draggedTile.style.opacity = '0.5'; // Визуальный эффект при перетаскивании
+      setTimeout(shiftTilesDown, 500); // Ждем завершения анимации удаления
+    }
+
+    function shiftTilesDown() {
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+
+      for (let col = 0; col < gridSize; col++) {
+        let emptySpaces = [];
+        let filledTiles = [];
+
+        for (let row = 0; row < gridSize; row++) {
+          const index = row * gridSize + col;
+          const tile = tiles[index];
+
+          if (!tile.classList[1]) {
+            emptySpaces.push(index);
+          } else {
+            filledTiles.push({ tile, index });
+          }
+        }
+
+        filledTiles.forEach(({ tile }, i) => {
+          if (emptySpaces.length > i) {
+            const targetIndex = emptySpaces[i];
+            tile.dataset.index = targetIndex;
+            tile.style.gridColumn = col + 1;
+            tile.style.gridRow = Math.floor(targetIndex / gridSize) + 1;
+            tile.style.transition = 'transform 0.3s ease';
+            setTimeout(() => (tile.style.transition = ''), 300);
+          }
+        });
+
+        fillEmptySpaces(col, emptySpaces);
       }
     }
 
-    function handleTouchMove(e) {
-      if (!draggedTile) return;
+    function fillEmptySpaces(column, emptySpaces) {
+      const newTiles = emptySpaces
+        .filter((index) => index < column + gridSize)
+        .map((index) => {
+          const newTile = document.createElement('div');
+          newTile.classList.add('tile', getRandomColor());
+          newTile.dataset.index = index;
+          newTile.style.gridColumn = column + 1;
+          newTile.style.gridRow = Math.floor(index / gridSize) + 1;
+          newTile.style.transition = 'transform 0.3s ease';
+          setTimeout(() => (newTile.style.transition = ''), 300);
+          return newTile;
+        });
 
-      const touch = e.touches[0];
-      const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+      gameContainer.prepend(...newTiles);
+    }
 
-      if (targetTile && targetTile.classList.contains('tile')) {
-        swapTiles(draggedTile, targetTile);
+    function saveProgress() {
+      localStorage.setItem('puzzleGameScore', score);
+    }
+
+    function loadProgress() {
+      const savedScore = localStorage.getItem('puzzleGameScore');
+      if (savedScore) {
+        score = parseInt(savedScore);
+        scoreDisplay.textContent = score;
       }
     }
 
-    function handleTouchEnd() {
-      if (draggedTile) {
-        draggedTile.style.opacity = '1';
-        draggedTile = null; // Сброс состояния перетаскивания
-      }
-    }
+    window.addEventListener('beforeunload', saveProgress);
+    loadProgress();
 
-    // МОБИЛЬНОЕ УПРАВЛЕНИЕ: Добавление событий touch
+    createGrid();
+
     gameContainer.addEventListener('touchstart', handleTouchStart);
     gameContainer.addEventListener('touchmove', handleTouchMove);
     gameContainer.addEventListener('touchend', handleTouchEnd);
-
-    // Обработка перемещения плиток
-    function swapTiles(tile1, tile2) {
-      const index1 = parseInt(tile1.dataset.index);
-      const index2 = parseInt(tile2.dataset.index);
-
-      if (!isValidMove(index1, index2)) {
-        tile1.classList.add('error-animation'); // Анимация ошибки
-        setTimeout(() => tile1.classList.remove('error-animation'), 300);
-        return;
-      }
-
-      const tempColor = tile1.classList[1];
-      tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-      tile2.classList.replace(tile2.classList[1], tempColor);
-
-      checkMatches(); // Проверка совпадений после перемещения
-    }
-
-    function isValidMove(index1, index2) {
-      const row1 = Math.floor(index1 / gridSize);
-      const col1 = index1 % gridSize;
-      const row2 = Math.floor(index2 / gridSize);
-      const col2 = index2 % gridSize;
-
-      return (
-        (row1 === row2 && Math.abs(col1 - col2) === 1) || // Горизонтальное перемещение
-        (col1 === col2 && Math.abs(row1 - row2) === 1)    // Вертикальное перемещение
-      );
-    }
-
-    createGrid();
   </script>
 </body>
 </html>
