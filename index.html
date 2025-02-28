@@ -1,86 +1,101 @@
-// Добавляем систему монстров и combos
-
-class Monster {
-    constructor(type, hp, skill) {
-        this.type = type;
-        this.hp = hp;
-        this.skill = skill; // функция активации скилла
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    takeDamage(damage) {
-        this.hp -= damage;
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-}
 
-// Примеры монстров
-const playerMonsters = [
-    new Monster('fire', 100, () => console.log('Fire skill activated!')),
-    new Monster('water', 120, () => console.log('Water skill activated!')),
-    new Monster('wood', 110, null)
-];
-
-let currentCombo = 0;
-let maxCombo = 0;
-
-function checkCombos(matches) {
-    currentCombo += matches.length;
-    if (currentCombo > maxCombo) {
-        maxCombo = currentCombo;
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
-    updateComboDisplay();
-    applyMonsterSkills(matches);
-    calculateDamage(matches);
-}
 
-function applyMonsterSkills(matches) {
-    matches.forEach(match => {
-        playerMonsters.forEach(monster => {
-            if (monster.type === match.type && monster.skill) {
-                monster.skill();
-            }
-        });
-    });
-}
-
-function calculateDamage(matches) {
-    let damage = 0;
-    matches.forEach(match => {
-        if (match.length >= 3) {
-            damage += match.length * 10; // базовый урон за orbs
-        }
-        if (match.length >= 4) {
-            damage += 20; // бонус за large match
-        }
-    });
-    damage *= (1 + currentCombo * 0.1); // combo multiplier
-    enemy.takeDamage(damage);
-    updateEnemyHP();
-}
-
-// Создаем противника
-const enemy = new Monster('enemy', 500, null);
-
-function updateEnemyHP() {
-    const hpBar = document.getElementById('enemy-hp');
-    hpBar.style.width = `${(enemy.hp / 500) * 100}%`;
-    if (enemy.hp <= 0) {
-        alert('You win!');
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
-}
 
-function updateComboDisplay() {
-    const comboDisplay = document.getElementById('combo-display');
-    comboDisplay.textContent = `Combo: ${currentCombo} (Max: ${maxCombo})`;
-}
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
+</head>
+<body>
 
-// Обработчик завершения хода
-function endTurn() {
-    currentCombo = 0; // сброс комбо после хода
-    spawnNewOrbs(); // генерация новых orbs
-    checkEnemyActions(); // действия врага
-}
+<div class="game-container" id="game-container"></div>
 
-function checkEnemyActions() {
-    // здесь можно добавить логику действий врага
-    // например, изменение orb или нанесение урона игроку
-}
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
+
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
+
+  // Initialize the game
+  createGrid();
+</script>
+
+</body>
+</html>
