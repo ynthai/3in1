@@ -127,9 +127,9 @@
                 if (col > cols - 3) return false;
                 const color = board[row][col];
                 if (color === board[row][col + 1] && color === board[row][col + 2]) {
-                    matches.push({ row, col });
-                    matches.push({ row, col + 1 });
-                    matches.push({ row, col + 2 });
+                    matches.push({ row: row, col: col });
+                    matches.push({ row: row, col: col + 1 });
+                    matches.push({ row: row, col: col + 2 });
                     return true;
                 }
                 return false;
@@ -140,9 +140,9 @@
                 if (row > rows - 3) return false;
                 const color = board[row][col];
                 if (color === board[row + 1][col] && color === board[row + 2][col]) {
-                    matches.push({ row, col });
-                    matches.push({ row + 1, col });
-                    matches.push({ row + 2, col });
+                    matches.push({ row: row, col: col });
+                    matches.push({ row: row + 1, col: col });
+                    matches.push({ row: row + 2, col: col });
                     return true;
                 }
                 return false;
@@ -157,10 +157,10 @@
                         color === board[row][col + 1] &&
                         color === board[row + 1][col]
                     ) {
-                        matches.push({ row, col - 1 });
-                        matches.push({ row, col });
-                        matches.push({ row, col + 1 });
-                        matches.push({ row + 1, col });
+                        matches.push({ row: row, col: col - 1 });
+                        matches.push({ row: row, col: col });
+                        matches.push({ row: row, col: col + 1 });
+                        matches.push({ row: row + 1, col: col });
                         return true;
                     }
                 }
@@ -171,10 +171,10 @@
                         color === board[row + 1][col] &&
                         color === board[row][col + 1]
                     ) {
-                        matches.push({ row - 1, col });
-                        matches.push({ row, col });
-                        matches.push({ row + 1, col });
-                        matches.push({ row, col + 1 });
+                        matches.push({ row: row - 1, col: col });
+                        matches.push({ row: row, col: col });
+                        matches.push({ row: row + 1, col: col });
+                        matches.push({ row: row, col: col + 1 });
                         return true;
                     }
                 }
@@ -195,8 +195,8 @@
 
         // Удаление совпадений
         function removeMatches(matches, board) {
-            matches.forEach(({ row, col }) => {
-                board[row][col] = null;
+            matches.forEach(match => {
+                board[match.row][match.col] = null;
             });
 
             // Сдвиг элементов сверху вниз
