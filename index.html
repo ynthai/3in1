@@ -1,169 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzle & Dragons</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .container {
-            text-align: center;
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            color: #333;
-        }
-        canvas {
-            border: 1px solid #ccc; /* Толщина и цвет границы сохранены */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Puzzle & Dragons</h1>
-        <canvas id="gameCanvas" width="300" height="500"></canvas>
-        <button id="startButton">Start Game</button>
-    </div>
+<div class="game-container" id="game-container"></div>
 
-    <script>
-        const ROWS = 10; // Количество строк
-        const COLS = 6; // Количество столбцов
-        const TILE_SIZE = 50; // Размер одной плитки
-        const COLORS = ['red', 'blue', 'green', 'yellow', 'purple']; // Доступные цвета
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-        let gameBoard = [];
-        let canvas = document.getElementById('gameCanvas');
-        let ctx = canvas.getContext('2d');
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
 
-        // Инициализация игры
-        function initGame() {
-            gameBoard = createBoard();
-            drawBoard();
-        }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-        // Создание игрового поля
-        function createBoard() {
-            let board = [];
-            for (let row = 0; row < ROWS; row++) {
-                let boardRow = [];
-                for (let col = 0; col < COLS; col++) {
-                    let randomColor = Math.floor(Math.random() * COLORS.length);
-                    boardRow.push(randomColor);
-                }
-                board.push(boardRow);
-            }
-            return board;
-        }
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
 
-        // Отрисовка игрового поля
-        function drawBoard() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Очистка холста
-            for (let row = 0; row < ROWS; row++) {
-                for (let col = 0; col < COLS; col++) {
-                    let tile = gameBoard[row][col];
-                    if (tile !== -1) { // Не рисуем удаленные плитки
-                        drawTile(col * TILE_SIZE, row * TILE_SIZE, COLORS[tile]);
-                    }
-                }
-            }
-        }
-
-        // Отрисовка одной плитки
-        function drawTile(x, y, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = '#ccc';
-            ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-        }
-
-        // Проверка совпадений
-        function checkMatches() {
-            let matches = [];
-
-            // Проверка горизонтальных совпадений
-            for (let row = 0; row < ROWS; row++) {
-                for (let col = 0; col < COLS - 2; col++) {
-                    if (
-                        gameBoard[row][col] !== -1 &&
-                        gameBoard[row][col] === gameBoard[row][col + 1] &&
-                        gameBoard[row][col] === gameBoard[row][col + 2]
-                    ) {
-                        matches.push({ row, col });
-                        matches.push({ row, col: col + 1 });
-                        matches.push({ row, col: col + 2 });
-                    }
-                }
-            }
-
-            // Проверка вертикальных совпадений
-            for (let col = 0; col < COLS; col++) {
-                for (let row = 0; row < ROWS - 2; row++) {
-                    if (
-                        gameBoard[row][col] !== -1 &&
-                        gameBoard[row][col] === gameBoard[row + 1][col] &&
-                        gameBoard[row][col] === gameBoard[row + 2][col]
-                    ) {
-                        matches.push({ row, col });
-                        matches.push({ row: row + 1, col });
-                        matches.push({ row: row + 2, col });
-                    }
-                }
-            }
-
-            return matches;
-        }
-
-        // Удаление совпадений
-        function removeMatches(matches) {
-            matches.forEach(match => {
-                gameBoard[match.row][match.col] = -1; // Метка удаления
-            });
-            drawBoard(); // Перерисовка поля
-        }
-
-        // Заполнение пустых ячеек новыми плитками
-        function refillBoard() {
-            for (let col = 0; col < COLS; col++) {
-                for (let row = ROWS - 1; row >= 0; row--) {
-                    if (gameBoard[row][col] === -1) {
-                        for (let r = row; r > 0; r--) {
-                            gameBoard[r][col] = gameBoard[r - 1][col]; // Сдвиг вниз
-                        }
-                        gameBoard[0][col] = Math.floor(Math.random() * COLORS.length); // Новая плитка сверху
-                    }
-                }
-            }
-            drawBoard();
-        }
-
-        // Обработчик кнопки "Start Game"
-        document.getElementById('startButton').addEventListener('click', () => {
-            initGame();
-            setTimeout(() => {
-                let matches = checkMatches();
-                if (matches.length > 0) {
-                    console.log('Найдены совпадения:', matches);
-                    removeMatches(matches);
-                    refillBoard();
-                } else {
-                    console.log('Совпадений не найдено');
-                }
-            }, 1000); // Проверка совпадений через секунду после старта
-        });
-    </script>
+  // Initialize the game
+  createGrid();
+</script>
 
 </body>
 </html>
