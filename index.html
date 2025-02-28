@@ -49,12 +49,10 @@
     let board = [];
     let isMoving = false;
 
-    // Генерация случайного цвета
     function getRandomColor() {
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    // Создание игрового поля
     function generateBoard() {
         const newBoard = [];
         for (let row = 0; row < rows; row++) {
@@ -66,7 +64,6 @@
         return newBoard;
     }
 
-    // Отображение игрового поля
     function drawBoard(board) {
         const gameBoard = document.getElementById('game-board');
         gameBoard.innerHTML = '';
@@ -81,40 +78,36 @@
         }
     }
 
-    // Проверка совпадений
     function checkMatches(board) {
         const matches = [];
 
-        // Проверка горизонтальных совпадений
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols - 2; col++) {
                 if (board[row][col] && board[row][col] === board[row][col + 1] && board[row][col] === board[row][col + 2]) {
-                    matches.push({ row, col });
-                    matches.push({ row, col + 1 });
-                    matches.push({ row, col + 2 });
+                    matches.push({ row: row, col: col });
+                    matches.push({ row: row, col: col + 1 });
+                    matches.push({ row: row, col: col + 2 });
                 }
             }
         }
 
-        // Проверка вертикальных совпадений
         for (let col = 0; col < cols; col++) {
             for (let row = 0; row < rows - 2; row++) {
                 if (board[row][col] && board[row][col] === board[row + 1][col] && board[row][col] === board[row + 2][col]) {
-                    matches.push({ row, col });
-                    matches.push({ row + 1, col });
-                    matches.push({ row + 2, col });
+                    matches.push({ row: row, col: col });
+                    matches.push({ row: row + 1, col: col });
+                    matches.push({ row: row + 2, col: col });
                 }
             }
         }
 
-        // Проверка "T"-образных совпадений
         for (let row = 0; row < rows - 1; row++) {
             for (let col = 1; col < cols - 1; col++) {
                 if (board[row][col] && board[row][col] === board[row][col - 1] && board[row][col] === board[row][col + 1] && board[row][col] === board[row + 1][col]) {
-                    matches.push({ row, col - 1 });
-                    matches.push({ row, col });
-                    matches.push({ row, col + 1 });
-                    matches.push({ row + 1, col });
+                    matches.push({ row: row, col: col - 1 });
+                    matches.push({ row: row, col: col });
+                    matches.push({ row: row, col: col + 1 });
+                    matches.push({ row: row + 1, col: col });
                 }
             }
         }
@@ -122,13 +115,11 @@
         return matches;
     }
 
-    // Удаление совпадений
     function removeMatches(matches, board) {
         matches.forEach(({ row, col }) => {
             board[row][col] = null;
         });
 
-        // Сдвиг элементов сверху вниз
         for (let col = 0; col < cols; col++) {
             let emptyRow = rows - 1;
             for (let row = rows - 1; row >= 0; row--) {
@@ -142,7 +133,6 @@
             }
         }
 
-        // Заполнение пустых ячеек новыми элементами
         for (let col = 0; col < cols; col++) {
             for (let row = 0; row < rows; row++) {
                 if (board[row][col] === null) {
@@ -152,7 +142,6 @@
         }
     }
 
-    // Автоматическая проверка совпадений
     function autoCheckMatches() {
         setInterval(() => {
             if (!isMoving) {
@@ -162,10 +151,9 @@
                     drawBoard(board);
                 }
             }
-        }, 500); // Интервал в 0.5 секунды
+        }, 500);
     }
 
-    // Обработка кликов
     let selectedCell = null;
     document.getElementById('game-board').addEventListener('click', (e) => {
         if (isMoving) return;
@@ -184,17 +172,14 @@
                 (Math.abs(row - selectedRow) === 1 && col === selectedCol) || 
                 (Math.abs(col - selectedCol) === 1 && row === selectedRow)
             ) {
-                // Меняем местами ячейки
                 isMoving = true;
                 [board[row][col], board[selectedRow][selectedCol]] = [board[selectedRow][selectedCol], board[row][col]];
 
                 drawBoard(board);
 
-                // Проверяем совпадения после хода
                 setTimeout(() => {
                     const matches = checkMatches(board);
                     if (matches.length === 0) {
-                        // Если нет совпадений, возвращаем ячейки обратно
                         [board[row][col], board[selectedRow][selectedCol]] = [board[selectedRow][selectedCol], board[row][col]];
                         drawBoard(board);
                     } else {
@@ -202,7 +187,7 @@
                         drawBoard(board);
                     }
                     isMoving = false;
-                }, 300); // Добавляем небольшую задержку для анимации
+                }, 300);
             }
 
             selectedCell.classList.remove('selected');
@@ -213,7 +198,6 @@
         }
     });
 
-    // Инициализация игры
     function initGame() {
         board = generateBoard();
         drawBoard(board);
