@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle & Dragons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
-    /* Основные стили */
     body {
       margin: 0;
       padding: 0;
@@ -13,218 +12,90 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: url('https://github.com/ynthai/puzzle-dagons/raw/main/assets/background.jpg') no-repeat center center fixed;
-      background-size: cover;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    .game-board {
+    .game-container {
       display: grid;
       grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(7, 50px);
-      gap: 2px;
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .cell {
+    .tile {
       width: 50px;
       height: 50px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 1px solid #ccc;
-      background-color: #f9f9f9;
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
-    .cell img {
-      width: 40px;
-      height: 40px;
-      transition: transform 0.3s ease;
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .cell.matched {
-      opacity: 0;
-      transform: scale(0.8);
-    }
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <div class="game-board" id="gameBoard"></div>
 
-  <script>
-    const boardSize = { rows: 7, cols: 6 };
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    let board = [];
-    let isChecking = false;
+<div class="game-container" id="game-container"></div>
 
-    function createBoard() {
-      const gameBoard = document.getElementById('gameBoard');
-      for (let row = 0; row < boardSize.rows; row++) {
-        board[row] = [];
-        for (let col = 0; col < boardSize.cols; col++) {
-          const cell = document.createElement('div');
-          cell.classList.add('cell');
-          const color = getRandomColor();
-          cell.innerHTML = `<img src="assets/${color}.png" alt="${color}" />`;
-          cell.dataset.row = row;
-          cell.dataset.col = col;
-          board[row][col] = color;
-          gameBoard.appendChild(cell);
-        }
-      }
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    function getRandomColor() {
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-    function checkMatches() {
-      if (isChecking) return;
-      isChecking = true;
-
-      const matches = findMatches();
-      if (matches.length > 0) {
-        removeMatches(matches);
-        setTimeout(() => fillEmptySpaces(), 500);
-        setTimeout(checkMatches, 500); // Проверяем цепочки совпадений
-      } else {
-        isChecking = false;
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    function findMatches() {
-      const matches = [];
+  // Initialize the game
+  createGrid();
+</script>
 
-      // Проверка горизонтальных совпадений
-      for (let row = 0; row < boardSize.rows; row++) {
-        for (let col = 0; col < boardSize.cols - 2; col++) {
-          if (
-            board[row][col] &&
-            board[row][col] === board[row][col + 1] &&
-            board[row][col] === board[row][col + 2]
-          ) {
-            matches.push([row, col], [row, col + 1], [row, col + 2]);
-          }
-        }
-      }
-
-      // Проверка вертикальных совпадений
-      for (let col = 0; col < boardSize.cols; col++) {
-        for (let row = 0; row < boardSize.rows - 2; row++) {
-          if (
-            board[row][col] &&
-            board[row][col] === board[row + 1][col] &&
-            board[row][col] === board[row + 2][col]
-          ) {
-            matches.push([row, col], [row + 1, col], [row + 2, col]);
-          }
-        }
-      }
-
-      // Проверка L-образных совпадений
-      for (let row = 0; row < boardSize.rows - 1; row++) {
-        for (let col = 0; col < boardSize.cols - 2; col++) {
-          if (
-            board[row][col] &&
-            board[row][col] === board[row][col + 1] &&
-            board[row][col] === board[row + 1][col + 2]
-          ) {
-            matches.push([row, col], [row, col + 1], [row + 1, col + 2]);
-          }
-        }
-      }
-
-      return matches;
-    }
-
-    function removeMatches(matches) {
-      matches.forEach(([row, col]) => {
-        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        if (cell) {
-          cell.classList.add('matched');
-          board[row][col] = null;
-        }
-      });
-    }
-
-    function fillEmptySpaces() {
-      for (let col = 0; col < boardSize.cols; col++) {
-        for (let row = boardSize.rows - 1; row >= 0; row--) {
-          if (!board[row][col]) {
-            for (let r = row - 1; r >= 0; r--) {
-              if (board[r][col]) {
-                board[row][col] = board[r][col];
-                board[r][col] = null;
-                const cellFrom = document.querySelector(`[data-row="${r}"][data-col="${col}"]`);
-                const cellTo = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-                if (cellFrom && cellTo) {
-                  cellFrom.style.transform = `translateY(${(row - r) * 52}px)`;
-                  setTimeout(() => {
-                    cellFrom.style.transform = '';
-                    cellTo.replaceWith(cellFrom);
-                  }, 300);
-                }
-                break;
-              }
-            }
-            if (!board[row][col]) {
-              board[row][col] = getRandomColor();
-              const newCell = document.createElement('div');
-              newCell.classList.add('cell');
-              newCell.innerHTML = `<img src="assets/${board[row][col]}.png" alt="${board[row][col]}" />`;
-              newCell.dataset.row = row;
-              newCell.dataset.col = col;
-              document.querySelector(`[data-row="${row}"][data-col="${col}"]`).replaceWith(newCell);
-            }
-          }
-        }
-      }
-    }
-
-    function swapCells(cell1, cell2) {
-      const row1 = parseInt(cell1.dataset.row);
-      const col1 = parseInt(cell1.dataset.col);
-      const row2 = parseInt(cell2.dataset.row);
-      const col2 = parseInt(cell2.dataset.col);
-
-      [board[row1][col1], board[row2][col2]] = [board[row2][col2], board[row1][col1]];
-      [cell1.innerHTML, cell2.innerHTML] = [cell2.innerHTML, cell1.innerHTML];
-
-      setTimeout(() => {
-        checkMatches();
-      }, 300);
-    }
-
-    function handleCellClick(e) {
-      const target = e.target.closest('.cell');
-      if (!target || !selectedCell) return;
-
-      const row1 = parseInt(selectedCell.dataset.row);
-      const col1 = parseInt(selectedCell.dataset.col);
-      const row2 = parseInt(target.dataset.row);
-      const col2 = parseInt(target.dataset.col);
-
-      if (Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1) {
-        swapCells(selectedCell, target);
-      }
-
-      selectedCell.classList.remove('selected');
-      selectedCell = null;
-    }
-
-    let selectedCell = null;
-    document.getElementById('gameBoard').addEventListener('click', (e) => {
-      const target = e.target.closest('.cell');
-      if (!target) return;
-
-      if (selectedCell) {
-        handleCellClick(e);
-      } else {
-        selectedCell = target;
-        selectedCell.classList.add('selected');
-      }
-    });
-
-    createBoard();
-  </script>
 </body>
 </html>
