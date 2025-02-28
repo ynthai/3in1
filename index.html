@@ -1,241 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzle & Dragons</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .board {
-            display: grid;
-            grid-template-columns: repeat(6, 50px);
-            grid-gap: 2px;
-        }
-        .cell {
-            width: 50px;
-            height: 50px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            border-radius: 5px;
-        }
-        .red { background-color: red; }
-        .blue { background-color: blue; }
-        .green { background-color: green; }
-        .yellow { background-color: yellow; }
-        .purple { background-color: purple; }
-        .orange { background-color: orange; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
 </head>
 <body>
-    <div id="game-board" class="board"></div>
 
-    <script>
-        const ROWS = 6;
-        const COLS = 6;
-        const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+<div class="game-container" id="game-container"></div>
 
-        let board = [];
-        let gameBoard = document.getElementById('game-board');
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-        // Инициализация игры
-        function initGame() {
-            board = generateBoard();
-            drawBoard(board);
-            autoCheckMatches(board);
-        }
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
 
-        // Генерация случайного цвета
-        function getRandomColor() {
-            return COLORS[Math.floor(Math.random() * COLORS.length)];
-        }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-        // Создание игрового поля
-        function generateBoard() {
-            const newBoard = [];
-            for (let row = 0; row < ROWS; row++) {
-                newBoard[row] = [];
-                for (let col = 0; col < COLS; col++) {
-                    newBoard[row][col] = getRandomColor();
-                }
-            }
-            return newBoard;
-        }
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
 
-        // Отрисовка игрового поля
-        function drawBoard(board) {
-            gameBoard.innerHTML = '';
-            for (let row = 0; row < ROWS; row++) {
-                for (let col = 0; col < COLS; col++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell', board[row][col]);
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.addEventListener('click', () => handleCellClick(row, col));
-                    gameBoard.appendChild(cell);
-                }
-            }
-        }
+  // Initialize the game
+  createGrid();
+</script>
 
-        // Обработка клика по ячейке
-        let selectedCell = null;
-        function handleCellClick(row, col) {
-            if (selectedCell === null) {
-                selectedCell = { row, col };
-            } else {
-                const { row: r1, col: c1 } = selectedCell;
-                const { row: r2, col: c2 } = { row, col };
-
-                if ((Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2)) {
-                    swapCells(r1, c1, r2, c2);
-                    const matches = checkMatches(board);
-
-                    if (matches.length > 0) {
-                        removeMatches(matches, board);
-                    } else {
-                        swapCells(r1, c1, r2, c2); // Возвращаем обратно, если нет совпадений
-                    }
-                }
-                selectedCell = null;
-            }
-            drawBoard(board);
-        }
-
-        // Обмен элементами на поле
-        function swapCells(r1, c1, r2, c2) {
-            [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
-        }
-
-        // Проверка совпадений
-        function checkMatches(board) {
-            const rows = board.length;
-            const cols = board[0].length;
-            const matches = [];
-
-            // Функция для проверки горизонтальных совпадений
-            function checkHorizontal(row, col) {
-                if (col > cols - 3) return false;
-                const color = board[row][col];
-                if (color === board[row][col + 1] && color === board[row][col + 2]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row, col: col + 1 });
-                    matches.push({ row: row, col: col + 2 });
-                    return true;
-                }
-                return false;
-            }
-
-            // Функция для проверки вертикальных совпадений
-            function checkVertical(row, col) {
-                if (row > rows - 3) return false;
-                const color = board[row][col];
-                if (color === board[row + 1][col] && color === board[row + 2][col]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row + 1, col: col });
-                    matches.push({ row: row + 2, col: col });
-                    return true;
-                }
-                return false;
-            }
-
-            // Функция для проверки "T"-образных совпадений
-            function checkTShape(row, col) {
-                if (col > 0 && col < cols - 1 && row < rows - 1) {
-                    const color = board[row][col];
-                    if (
-                        color === board[row][col - 1] &&
-                        color === board[row][col + 1] &&
-                        color === board[row + 1][col]
-                    ) {
-                        matches.push({ row: row, col: col - 1 });
-                        matches.push({ row: row, col: col });
-                        matches.push({ row: row, col: col + 1 });
-                        matches.push({ row: row + 1, col: col });
-                        return true;
-                    }
-                }
-                if (row > 0 && row < rows - 1 && col < cols - 1) {
-                    const color = board[row][col];
-                    if (
-                        color === board[row - 1][col] &&
-                        color === board[row + 1][col] &&
-                        color === board[row][col + 1]
-                    ) {
-                        matches.push({ row: row - 1, col: col });
-                        matches.push({ row: row, col: col });
-                        matches.push({ row: row + 1, col: col });
-                        matches.push({ row: row, col: col + 1 });
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            // Проверяем каждую ячейку
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    checkHorizontal(row, col);
-                    checkVertical(row, col);
-                    checkTShape(row, col);
-                }
-            }
-
-            return matches;
-        }
-
-        // Удаление совпадений
-        function removeMatches(matches, board) {
-            matches.forEach(match => {
-                board[match.row][match.col] = null;
-            });
-
-            // Сдвиг элементов сверху вниз
-            for (let col = 0; col < board[0].length; col++) {
-                let emptyRow = board.length - 1;
-                for (let row = board.length - 1; row >= 0; row--) {
-                    if (board[row][col] !== null) {
-                        board[emptyRow][col] = board[row][col];
-                        if (row !== emptyRow) {
-                            board[row][col] = null;
-                        }
-                        emptyRow--;
-                    }
-                }
-            }
-
-            // Заполнение пустых ячеек новыми элементами
-            for (let col = 0; col < board[0].length; col++) {
-                for (let row = 0; row < board.length; row++) {
-                    if (board[row][col] === null) {
-                        board[row][col] = getRandomColor();
-                    }
-                }
-            }
-        }
-
-        // Автоматическая проверка совпадений
-        function autoCheckMatches(board) {
-            setInterval(() => {
-                const matches = checkMatches(board);
-                if (matches.length > 0) {
-                    removeMatches(matches, board);
-                    drawBoard(board);
-                }
-            }, 500);
-        }
-
-        // Запуск игры
-        initGame();
-    </script>
 </body>
 </html>
