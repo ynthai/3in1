@@ -1,101 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minimalist Puzzle Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
-      font-family: 'Helvetica', sans-serif;
-    }
-
-    .game-container {
-      display: grid;
-      grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(6, 50px);
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .tile {
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-
-    .tile:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle & Dragons</title>
+    <style>
+        /* ... (ваш существующий CSS) ... */
+        #enemy-hp {
+            width: 100%;
+            height: 20px;
+            background-color: red;
+        }
+        #combo-display {
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
+    <div id="game-container">
+        <div id="enemy-hp"></div>
+        <div id="combo-display">Combo: 0 (Max: 0)</div>
+        <div id="game-board"></div>
+    </div>
 
-<div class="game-container" id="game-container"></div>
+    <script>
+        const boardSize = 5;
+        const colors = ['red', 'blue', 'green', 'lightblue', 'yellow'];
+        let board = [];
+        let currentCombo = 0;
+        let maxCombo = 0;
 
-<script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let selectedTile = null;
+        class Monster {
+            constructor(type, hp, skill) {
+                this.type = type;
+                this.hp = hp;
+                this.skill = skill;
+            }
 
-  // Create the game grid
-  function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    }
-  }
+            takeDamage(damage) {
+                this.hp -= damage;
+            }
+        }
 
-  // Get a random color from the colors array
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+        const playerMonsters = [
+            new Monster('red', 100, () => console.log('Fire skill activated!')),
+            new Monster('blue', 120, () => console.log('Water skill activated!')),
+            new Monster('green', 110, null)
+        ];
 
-  // Select a tile to swap
-  function selectTile(e) {
-    if (!selectedTile) {
-      selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const currentTile = e.target;
-      if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
-      }
-      selectedTile.style.border = '';
-      selectedTile = null;
-    }
-  }
+        const enemy = new Monster('enemy', 500, null);
 
-  // Initialize the game
-  createGrid();
-</script>
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            for (let i = 0; i < boardSize * boardSize; i++) {
+                const orb = document.createElement('div');
+                orb.classList.add('orb');
+                orb.dataset.color = colors[Math.floor(Math.random() * colors.length)];
+                orb.style.backgroundColor = orb.dataset.color;
+                orb.draggable = true;
+                orb.addEventListener('dragstart', dragStart);
+                orb.addEventListener('dragover', dragOver);
+                orb.addEventListener('drop', drop);
+                gameBoard.appendChild(orb);
+                board.push(orb);
+            }
+        }
 
+        function dragStart(e) {
+            e.dataTransfer.setData("text", e.target.id);
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function drop(e) {
+            const draggedOrb = document.getElementById(e.dataTransfer.getData("text"));
+            const targetOrb = e.target;
+
+            if (draggedOrb && targetOrb && draggedOrb !== targetOrb) {
+                const draggedColor = draggedOrb.dataset.color;
+                const targetColor = targetOrb.dataset.color;
+
+                draggedOrb.dataset.color = targetColor;
+                targetOrb.dataset.color = draggedColor;
+
+                draggedOrb.style.backgroundColor = draggedOrb.dataset.color;
+                targetOrb.style.backgroundColor = targetOrb.dataset.color;
+
+                checkMatches();
+            }
+        }
+
+        function checkMatches() {
+            let matches = [];
+
+            // Проверка горизонтальных совпадений
+            for (let row = 0; row < boardSize; row++) {
+                let match = [];
+                for (let col = 0; col < boardSize; col++) {
+                    const index = row * boardSize + col;
+                    if (match.length === 0 || board[index].dataset.color === match[0].dataset.color) {
+                        match.push(board[index]);
+                    } else {
+                        if (match.length >= 3) matches.push(match);
+                        match = [board[index]];
+                    }
+                }
+                if (match.length >= 3) matches.push(match);
+            }
+
+            // Проверка вертикальных совпадений
+            for (let col = 0; col < boardSize; col++) {
+                let match = [];
+                for (let row = 0; row < boardSize; row++) {
+                    const index = row * boardSize + col;
+                    if (match.length === 0 || board[index].dataset.color === match[0].dataset.color) {
+                        match.push(board[index]);
+                    } else {
+                        if (match.length >= 3) matches.push(match);
+                        match = [board[index]];
+                    }
+                }
+                if (match.length >= 3) matches.push(match);
+            }
+
+            if (matches.length > 0) {
+                checkCombos(matches);
+                clearMatches(matches);
+            }
+        }
+
+        function checkCombos(matches) {
+            currentCombo += matches.length;
+            if (currentCombo > maxCombo) {
+                maxCombo = currentCombo;
+            }
+            updateComboDisplay();
+            applyMonsterSkills(matches);
+            calculateDamage(matches);
+        }
+
+        function applyMonsterSkills(matches) {
+            matches.forEach(match => {
+                playerMonsters.forEach(monster => {
+                    if (monster.type === match[0].dataset.color && monster.skill) {
+                        monster.skill();
+                    }
+                });
+            });
+        }
+
+        function calculateDamage(matches) {
+            let damage = 0;
+            matches.forEach(match => {
+                if (match.length >= 3) {
+                    damage += match.length * 10;
+                }
+                if (match.length >= 4) {
+                    damage += 20;
+                }
+            });
+            damage *= (1 + currentCombo * 0.1);
+            enemy.takeDamage(damage);
+            updateEnemyHP();
+        }
+
+        function clearMatches(matches) {
+            matches.forEach(match => {
+                match.forEach(orb => {
+                    orb.remove();
+                });
+            });
+            setTimeout(() => {
+                spawnNewOrbs();
+                endTurn();
+            }, 500);
+        }
+
+        function spawnNewOrbs() {
+            const gameBoard = document.getElementById('game-board');
+            for (let i = 0; i < boardSize * boardSize; i++) {
+                if (!document.querySelector(`#game-board .orb:nth-child(${i+1})`)) {
+                    const newOrb = document.createElement('div');
+                    newOrb.classList.add('orb');
+                    newOrb.dataset.color = colors[Math.floor(Math.random() * colors.length)];
+                    newOrb.style.backgroundColor = newOrb.dataset.color;
+                    newOrb.draggable = true;
+                    newOrb.addEventListener('dragstart', dragStart);
+                    newOrb.addEventListener('dragover', dragOver);
+                    newOrb.addEventListener('drop', drop);
+                    gameBoard.insertBefore(newOrb, gameBoard.children[i]);
+                    board[i] = newOrb;
+                }
+            }
+        }
+
+        function updateEnemyHP() {
+            const hpBar = document.getElementById('enemy-hp');
+            hpBar.style.width = `${(enemy.hp / 500) * 100}%`;
+            if (enemy.hp <= 0) {
+                alert('You win!');
+            }
+        }
+
+        function updateComboDisplay() {
+            const comboDisplay = document.getElementById('combo-display');
+            comboDisplay.textContent = `Combo: ${currentCombo} (Max: ${maxCombo})`;
+        }
+
+        function endTurn() {
+            currentCombo = 0;
+            checkEnemyActions();
+        }
+
+        function checkEnemyActions() {
+            // Здесь можно добавить действия врага
+        }
+
+        createBoard();
+    </script>
 </body>
 </html>
