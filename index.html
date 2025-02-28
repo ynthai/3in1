@@ -6,202 +6,273 @@
     <title>Puzzle & Dragons</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
         }
-        .board {
+
+        .game-board {
             display: grid;
             grid-template-columns: repeat(8, 50px);
-            grid-gap: 2px;
+            grid-template-rows: repeat(8, 50px);
+            gap: 5px;
         }
+
         .cell {
             width: 50px;
             height: 50px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 1px solid #ccc;
             border-radius: 5px;
             cursor: pointer;
-            background-color: white;
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        .red { background-color: red; }
-        .blue { background-color: blue; }
-        .green { background-color: green; }
-        .yellow { background-color: yellow; }
-        .purple { background-color: purple; }
-        .orange { background-color: orange; }
+
+        .cell.empty {
+            background-color: #ecf0f1;
+            opacity: 0.5;
+        }
+
+        .cell.red { background-color: #e74c3c; }
+        .cell.blue { background-color: #3498db; }
+        .cell.green { background-color: #2ecc71; }
+        .cell.yellow { background-color: #f1c40f; }
+        .cell.purple { background-color: #9b59b6; }
+
+        .cell.match {
+            animation: fade-out 0.3s ease forwards;
+        }
+
+        @keyframes fade-out {
+            to {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+
+        .falling-cell {
+            animation: fall 0.5s ease;
+        }
+
+        @keyframes fall {
+            from {
+                transform: translateY(-50px);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
 
-<div class="board" id="game-board"></div>
+<div class="game-board" id="game-board"></div>
 
 <script>
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
-    const rows = 8;
-    const cols = 8;
-    let board = [];
-    let isMoving = false;
+    const boardSize = 8;
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
 
+    // Генерация случайного цвета
     function getRandomColor() {
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
+    // Создание игрового поля
     function generateBoard() {
-        const newBoard = [];
-        for (let row = 0; row < rows; row++) {
-            newBoard[row] = [];
-            for (let col = 0; col < cols; col++) {
-                newBoard[row][col] = getRandomColor();
+        const board = [];
+        for (let row = 0; row < boardSize; row++) {
+            board[row] = [];
+            for (let col = 0; col < boardSize; col++) {
+                board[row][col] = getRandomColor();
             }
         }
-        return newBoard;
+        return board;
     }
 
+    // Отображение игрового поля
     function drawBoard(board) {
         const gameBoard = document.getElementById('game-board');
-        gameBoard.innerHTML = '';
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
+        gameBoard.innerHTML = ''; // Очистка поля
+
+        board.forEach((row, rowIndex) => {
+            row.forEach((color, colIndex) => {
                 const cell = document.createElement('div');
-                cell.classList.add('cell', board[row][col]);
-                cell.dataset.row = row;
-                cell.dataset.col = col;
+                cell.classList.add('cell', color);
+                cell.dataset.row = rowIndex;
+                cell.dataset.col = colIndex;
                 gameBoard.appendChild(cell);
-            }
-        }
+            });
+        });
     }
 
+    // Проверка совпадений
     function checkMatches(board) {
         const matches = [];
 
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols - 2; col++) {
-                if (board[row][col] && board[row][col] === board[row][col + 1] && board[row][col] === board[row][col + 2]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row, col: col + 1 });
-                    matches.push({ row: row, col: col + 2 });
-                }
+        // Функция для проверки горизонтальных совпадений
+        function checkHorizontal(row, col) {
+            if (col > boardSize - 3) return false;
+            const color = board[row][col];
+            if (color === board[row][col + 1] && color === board[row][col + 2]) {
+                matches.push({ row, col });
+                matches.push({ row, col + 1 });
+                matches.push({ row, col + 2 });
+                return true;
             }
+            return false;
         }
 
-        for (let col = 0; col < cols; col++) {
-            for (let row = 0; row < rows - 2; row++) {
-                if (board[row][col] && board[row][col] === board[row + 1][col] && board[row][col] === board[row + 2][col]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row + 1, col: col });
-                    matches.push({ row: row + 2, col: col });
-                }
+        // Функция для проверки вертикальных совпадений
+        function checkVertical(row, col) {
+            if (row > boardSize - 3) return false;
+            const color = board[row][col];
+            if (color === board[row + 1][col] && color === board[row + 2][col]) {
+                matches.push({ row, col });
+                matches.push({ row + 1, col });
+                matches.push({ row + 2, col });
+                return true;
             }
+            return false;
         }
 
-        for (let row = 0; row < rows - 1; row++) {
-            for (let col = 1; col < cols - 1; col++) {
-                if (board[row][col] && board[row][col] === board[row][col - 1] && board[row][col] === board[row][col + 1] && board[row][col] === board[row + 1][col]) {
-                    matches.push({ row: row, col: col - 1 });
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row, col: col + 1 });
-                    matches.push({ row: row + 1, col: col });
+        // Функция для проверки "T"-образных совпадений
+        function checkTShape(row, col) {
+            if (col > 0 && col < boardSize - 1 && row < boardSize - 1) {
+                const color = board[row][col];
+                if (
+                    color === board[row][col - 1] &&
+                    color === board[row][col + 1] &&
+                    color === board[row + 1][col]
+                ) {
+                    matches.push({ row, col - 1 });
+                    matches.push({ row, col });
+                    matches.push({ row, col + 1 });
+                    matches.push({ row + 1, col });
+                    return true;
                 }
+            }
+            if (row > 0 && row < boardSize - 1 && col < boardSize - 1) {
+                const color = board[row][col];
+                if (
+                    color === board[row - 1][col] &&
+                    color === board[row + 1][col] &&
+                    color === board[row][col + 1]
+                ) {
+                    matches.push({ row - 1, col });
+                    matches.push({ row, col });
+                    matches.push({ row + 1, col });
+                    matches.push({ row, col + 1 });
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Проверяем каждую ячейку
+        for (let row = 0; row < boardSize; row++) {
+            for (let col = 0; col < boardSize; col++) {
+                checkHorizontal(row, col);
+                checkVertical(row, col);
+                checkTShape(row, col);
             }
         }
 
         return matches;
     }
 
+    // Удаление совпадений
     function removeMatches(matches, board) {
         matches.forEach(({ row, col }) => {
-            board[row][col] = null;
+            board[row][col] = null; // Удаляем элемент
         });
 
-        for (let col = 0; col < cols; col++) {
-            let emptyRow = rows - 1;
-            for (let row = rows - 1; row >= 0; row--) {
+        // Сдвигаем элементы сверху вниз
+        for (let col = 0; col < boardSize; col++) {
+            let emptyRow = boardSize - 1;
+            for (let row = boardSize - 1; row >= 0; row--) {
                 if (board[row][col] !== null) {
                     board[emptyRow][col] = board[row][col];
                     if (row !== emptyRow) {
-                        board[row][col] = null;
+                        board[row][col] = null; // Очищаем старую позицию
                     }
                     emptyRow--;
                 }
             }
         }
 
-        for (let col = 0; col < cols; col++) {
-            for (let row = 0; row < rows; row++) {
+        // Заполняем пустые строки новыми элементами
+        for (let col = 0; col < boardSize; col++) {
+            for (let row = 0; row < boardSize; row++) {
                 if (board[row][col] === null) {
-                    board[row][col] = getRandomColor();
+                    board[row][col] = getRandomColor(); // Генерируем случайный цвет
                 }
             }
         }
     }
 
-    function autoCheckMatches() {
+    // Автоматическая проверка совпадений
+    function autoCheckMatches(board) {
         setInterval(() => {
-            if (!isMoving) {
-                const matches = checkMatches(board);
-                if (matches.length > 0) {
-                    removeMatches(matches, board);
-                    drawBoard(board);
-                }
+            const matches = checkMatches(board);
+            if (matches.length > 0) {
+                matches.forEach(match => {
+                    const cell = document.querySelector(`.cell[data-row="${match.row}"][data-col="${match.col}"]`);
+                    if (cell) {
+                        cell.classList.add('match'); // Добавляем класс для анимации
+                        setTimeout(() => {
+                            cell.remove(); // Удаляем ячейку после анимации
+                        }, 300);
+                    }
+                });
+                removeMatches(matches, board);
+                drawBoard(board); // Перерисовываем поле
             }
-        }, 500);
+        }, 500); // Интервал в 0.5 секунды
     }
 
-    let selectedCell = null;
-    document.getElementById('game-board').addEventListener('click', (e) => {
-        if (isMoving) return;
-
-        const target = e.target;
-        if (!target.classList.contains('cell')) return;
-
-        const row = parseInt(target.dataset.row);
-        const col = parseInt(target.dataset.col);
-
-        if (selectedCell) {
-            const selectedRow = parseInt(selectedCell.dataset.row);
-            const selectedCol = parseInt(selectedCell.dataset.col);
-
-            if (
-                (Math.abs(row - selectedRow) === 1 && col === selectedCol) || 
-                (Math.abs(col - selectedCol) === 1 && row === selectedRow)
-            ) {
-                isMoving = true;
-                [board[row][col], board[selectedRow][selectedCol]] = [board[selectedRow][selectedCol], board[row][col]];
-
-                drawBoard(board);
-
-                setTimeout(() => {
-                    const matches = checkMatches(board);
-                    if (matches.length === 0) {
-                        [board[row][col], board[selectedRow][selectedCol]] = [board[selectedRow][selectedCol], board[row][col]];
-                        drawBoard(board);
-                    } else {
-                        removeMatches(matches, board);
-                        drawBoard(board);
-                    }
-                    isMoving = false;
-                }, 300);
-            }
-
-            selectedCell.classList.remove('selected');
-            selectedCell = null;
-        } else {
-            selectedCell = target;
-            selectedCell.classList.add('selected');
-        }
-    });
-
+    // Инициализация игры
     function initGame() {
-        board = generateBoard();
+        const board = generateBoard();
         drawBoard(board);
-        autoCheckMatches();
+        autoCheckMatches(board);
+
+        // Обработка кликов
+        let selectedCell = null;
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                if (!selectedCell) {
+                    selectedCell = cell;
+                    selectedCell.style.border = '2px solid white';
+                } else {
+                    const [row1, col1] = [parseInt(selectedCell.dataset.row), parseInt(selectedCell.dataset.col)];
+                    const [row2, col2] = [parseInt(cell.dataset.row), parseInt(cell.dataset.col)];
+
+                    if (Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1) {
+                        // Меняем местами
+                        const temp = board[row1][col1];
+                        board[row1][col1] = board[row2][col2];
+                        board[row2][col2] = temp;
+
+                        drawBoard(board);
+
+                        // Проверяем совпадения
+                        const matches = checkMatches(board);
+                        if (matches.length === 0) {
+                            // Возвращаем назад, если нет совпадений
+                            const tempBack = board[row1][col1];
+                            board[row1][col1] = board[row2][col2];
+                            board[row2][col2] = tempBack;
+                            drawBoard(board);
+                        }
+                    }
+
+                    selectedCell.style.border = '';
+                    selectedCell = null;
+                }
+            });
+        });
     }
 
     initGame();
