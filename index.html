@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle & Dragons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
     body {
       margin: 0;
@@ -12,242 +12,90 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background-color: #f0f0f0;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    .board {
+    .game-container {
       display: grid;
       grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(7, 50px);
+      grid-template-rows: repeat(6, 50px);
       gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .cell {
+    .tile {
       width: 50px;
       height: 50px;
-      background-color: #ccc;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 5px;
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
-    .cell.empty {
-      background-color: transparent;
-      border: 1px dashed #aaa;
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .cell.falling {
-      transform: translateY(50px);
-      opacity: 0;
-    }
-
-    .cell.matched {
-      animation: fadeOut 0.3s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to {
-        opacity: 0;
-      }
-    }
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <div id="game-board" class="board"></div>
 
-  <script>
-    const board = [];
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    const rows = 7;
-    const cols = 6;
+<div class="game-container" id="game-container"></div>
 
-    function createBoard() {
-      const gameBoard = document.getElementById('game-board');
-      for (let r = 0; r < rows; r++) {
-        const row = [];
-        for (let c = 0; c < cols; c++) {
-          const cell = document.createElement('div');
-          cell.classList.add('cell');
-          cell.dataset.row = r;
-          cell.dataset.col = c;
-          const color = colors[Math.floor(Math.random() * colors.length)];
-          cell.style.backgroundColor = color;
-          cell.dataset.color = color;
-          gameBoard.appendChild(cell);
-          row.push({ color });
-        }
-        board.push(row);
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
+
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    function checkMatches() {
-      let hasMatches = false;
+  // Initialize the game
+  createGrid();
+</script>
 
-      // Check horizontal matches
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols - 2; c++) {
-          if (board[r][c].color === board[r][c + 1].color &&
-              board[r][c].color === board[r][c + 2].color &&
-              board[r][c].color !== '') {
-            markCellsForRemoval(r, c, r, c + 1, r, c + 2);
-            hasMatches = true;
-          }
-        }
-      }
-
-      // Check vertical matches
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows - 2; r++) {
-          if (board[r][c].color === board[r + 1][c].color &&
-              board[r][c].color === board[r + 2][c].color &&
-              board[r][c].color !== '') {
-            markCellsForRemoval(r, c, r + 1, c, r + 2, c);
-            hasMatches = true;
-          }
-        }
-      }
-
-      // Check L-shaped matches (two horizontal + one vertical)
-      for (let r = 0; r < rows - 1; r++) {
-        for (let c = 0; c < cols - 2; c++) {
-          if (board[r][c].color === board[r][c + 1].color &&
-              board[r][c].color === board[r + 1][c + 1].color &&
-              board[r][c].color !== '') {
-            markCellsForRemoval(r, c, r, c + 1, r + 1, c + 1);
-            hasMatches = true;
-          }
-        }
-      }
-
-      return hasMatches;
-    }
-
-    function markCellsForRemoval(...coords) {
-      coords.forEach(([r, c]) => {
-        const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
-        if (cell) {
-          cell.classList.add('matched');
-          board[r][c].color = '';
-        }
-      });
-    }
-
-    function removeMatchedCells() {
-      board.forEach((row, r) => {
-        row.forEach((cell, c) => {
-          const el = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
-          if (cell.color === '') {
-            el.classList.add('falling');
-            setTimeout(() => {
-              el.remove();
-              board[r][c] = { color: '' };
-            }, 300);
-          }
-        });
-      });
-    }
-
-    function dropCells() {
-      for (let c = 0; c < cols; c++) {
-        let emptySpaces = 0;
-        for (let r = rows - 1; r >= 0; r--) {
-          if (board[r][c].color === '') {
-            emptySpaces++;
-          } else if (emptySpaces > 0) {
-            board[r + emptySpaces][c] = { color: board[r][c].color };
-            board[r][c] = { color: '' };
-
-            const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
-            if (cell) {
-              cell.style.transform = `translateY(${emptySpaces * 55}px)`;
-              setTimeout(() => {
-                cell.style.transform = '';
-                cell.setAttribute('data-row', r + emptySpaces);
-              }, 300);
-            }
-          }
-        }
-      }
-    }
-
-    function refillBoard() {
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (board[r][c].color === '') {
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            board[r][c] = { color };
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.dataset.row = r;
-            cell.dataset.col = c;
-            cell.style.backgroundColor = color;
-            cell.dataset.color = color;
-            document.querySelector('.board').appendChild(cell);
-          }
-        }
-      }
-    }
-
-    function handleMove(startRow, startCol, endRow, endCol) {
-      if (Math.abs(startRow - endRow) + Math.abs(startCol - endCol) !== 1) return;
-
-      const temp = board[startRow][startCol];
-      board[startRow][startCol] = board[endRow][endCol];
-      board[endRow][endCol] = temp;
-
-      const startCell = document.querySelector(`[data-row="${startRow}"][data-col="${startCol}"]`);
-      const endCell = document.querySelector(`[data-row="${endRow}"][data-col="${endCol}"]`);
-
-      [startCell.dataset.row, endCell.dataset.row] = [endCell.dataset.row, startCell.dataset.row];
-      [startCell.dataset.col, endCell.dataset.col] = [endCell.dataset.col, startCell.dataset.col];
-
-      startCell.style.backgroundColor = board[startRow][startCol].color;
-      endCell.style.backgroundColor = board[endRow][endCol].color;
-
-      if (!checkMatches()) {
-        [board[startRow][startCol], board[endRow][endCol]] = [board[endRow][endCol], board[startRow][startCol]];
-        [startCell.dataset.row, endCell.dataset.row] = [endCell.dataset.row, startCell.dataset.row];
-        [startCell.dataset.col, endCell.dataset.col] = [endCell.dataset.col, startCell.dataset.col];
-        startCell.style.backgroundColor = board[startRow][startCol].color;
-        endCell.style.backgroundColor = board[endRow][endCol].color;
-      } else {
-        processMatches();
-      }
-    }
-
-    function processMatches() {
-      if (checkMatches()) {
-        removeMatchedCells();
-        setTimeout(() => {
-          dropCells();
-          refillBoard();
-          setTimeout(processMatches, 500);
-        }, 300);
-      }
-    }
-
-    function initGame() {
-      createBoard();
-      document.querySelectorAll('.cell').forEach(cell => {
-        cell.addEventListener('click', () => {
-          const startCell = document.querySelector('.selected');
-          if (startCell && startCell !== cell) {
-            const startRow = parseInt(startCell.dataset.row);
-            const startCol = parseInt(startCell.dataset.col);
-            const endRow = parseInt(cell.dataset.row);
-            const endCol = parseInt(cell.dataset.col);
-            handleMove(startRow, startCol, endRow, endCol);
-            startCell.classList.remove('selected');
-          } else {
-            cell.classList.add('selected');
-          }
-        });
-      });
-    }
-
-    initGame();
-  </script>
 </body>
 </html>
