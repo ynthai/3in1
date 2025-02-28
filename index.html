@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minimalist Puzzle Game</title>
+  <title>Puzzle Dagons</title>
   <style>
     body {
       margin: 0;
@@ -12,90 +12,184 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
-      font-family: 'Helvetica', sans-serif;
+      background-color: #2c3e50;
     }
 
     .game-container {
       display: grid;
-      grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(6, 50px);
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      grid-template-columns: repeat(8, 50px);
+      grid-template-rows: repeat(8, 50px);
+      gap: 2px;
+      background-color: #34495e;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
 
     .tile {
       width: 50px;
       height: 50px;
-      border-radius: 10px;
+      border-radius: 5px;
       cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+      transition: transform 0.2s ease;
     }
 
     .tile:hover {
       transform: scale(1.1);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
+    .red { background-color: #e74c3c; }
+    .blue { background-color: #3498db; }
+    .green { background-color: #2ecc71; }
+    .yellow { background-color: #f1c40f; }
+    .purple { background-color: #9b59b6; }
+    .orange { background-color: #e67e22; }
   </style>
 </head>
 <body>
+  <div class="game-container" id="game-container"></div>
 
-<div class="game-container" id="game-container"></div>
+  <script>
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+    const rows = 8;
+    const cols = 8;
+    const gameContainer = document.getElementById('game-container');
+    let board = [];
 
-<script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let selectedTile = null;
-
-  // Create the game grid
-  function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    }
-  }
-
-  // Get a random color from the colors array
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
-
-  // Select a tile to swap
-  function selectTile(e) {
-    if (!selectedTile) {
-      selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const currentTile = e.target;
-      if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
+    // Initialize the board
+    function createBoard() {
+      for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < cols; c++) {
+          const tileColor = colors[Math.floor(Math.random() * colors.length)];
+          const tile = document.createElement('div');
+          tile.classList.add('tile', tileColor);
+          tile.setAttribute('data-row', r);
+          tile.setAttribute('data-col', c);
+          gameContainer.appendChild(tile);
+          row.push(tileColor);
+        }
+        board.push(row);
       }
-      selectedTile.style.border = '';
-      selectedTile = null;
     }
-  }
 
-  // Initialize the game
-  createGrid();
-</script>
+    // Check for matches in all directions
+    function checkMatches() {
+      let hasMatch = false;
 
+      // Check horizontal matches
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols - 2; c++) {
+          if (board[r][c] && board[r][c] === board[r][c + 1] && board[r][c] === board[r][c + 2]) {
+            markMatch(r, c, r, c + 1, r, c + 2);
+            hasMatch = true;
+          }
+        }
+      }
+
+      // Check vertical matches
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows - 2; r++) {
+          if (board[r][c] && board[r][c] === board[r + 1][c] && board[r][c] === board[r + 2][c]) {
+            markMatch(r, c, r + 1, c, r + 2, c);
+            hasMatch = true;
+          }
+        }
+      }
+
+      // Check T-shaped matches (horizontal + vertical)
+      for (let r = 1; r < rows - 1; r++) {
+        for (let c = 1; c < cols - 1; c++) {
+          if (
+            board[r][c] &&
+            board[r][c] === board[r][c - 1] &&
+            board[r][c] === board[r][c + 1] &&
+            board[r][c] === board[r - 1][c] ||
+            board[r][c] === board[r + 1][c]
+          ) {
+            markMatch(r, c, r, c - 1, r, c + 1, r - 1, c, r + 1, c);
+            hasMatch = true;
+          }
+        }
+      }
+
+      return hasMatch;
+    }
+
+    // Mark tiles to be removed
+    function markMatch(...positions) {
+      positions.forEach(([r, c]) => {
+        if (board[r][c]) {
+          const tile = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+          tile.classList.add('matched');
+          board[r][c] = null;
+        }
+      });
+    }
+
+    // Remove matched tiles and refill the board
+    function removeMatches() {
+      let hasRemoved = false;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!board[r][c]) {
+            const tile = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            tile.remove();
+            gameContainer.appendChild(createNewTile(c));
+            hasRemoved = true;
+          }
+        }
+      }
+      return hasRemoved;
+    }
+
+    // Create a new tile
+    function createNewTile(col) {
+      const tileColor = colors[Math.floor(Math.random() * colors.length)];
+      const tile = document.createElement('div');
+      tile.classList.add('tile', tileColor);
+      tile.setAttribute('data-row', '-1'); // Temporary row value
+      tile.setAttribute('data-col', col);
+      return tile;
+    }
+
+    // Main game loop
+    function gameLoop() {
+      if (checkMatches()) {
+        setTimeout(() => {
+          if (removeMatches()) {
+            setTimeout(gameLoop, 500); // Recursive call after refilling
+          }
+        }, 500);
+      }
+    }
+
+    // Event listener for swapping tiles
+    let selectedTile = null;
+    gameContainer.addEventListener('click', (e) => {
+      if (e.target.classList.contains('tile')) {
+        if (selectedTile === null) {
+          selectedTile = e.target;
+        } else {
+          const [r1, c1] = [parseInt(selectedTile.getAttribute('data-row')), parseInt(selectedTile.getAttribute('data-col'))];
+          const [r2, c2] = [parseInt(e.target.getAttribute('data-row')), parseInt(e.target.getAttribute('data-col'))];
+
+          if (Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1) {
+            [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+            [selectedTile.classList.value, e.target.classList.value] = [e.target.classList.value, selectedTile.classList.value];
+
+            if (!checkMatches()) {
+              [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+              [selectedTile.classList.value, e.target.classList.value] = [e.target.classList.value, selectedTile.classList.value];
+            } else {
+              gameLoop();
+            }
+          }
+          selectedTile = null;
+        }
+      }
+    });
+
+    createBoard();
+  </script>
 </body>
 </html>
