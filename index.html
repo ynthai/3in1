@@ -1,46 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"> <!-- Устанавливает кодировку документа -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Настройки отображения на мобильных устройствах -->
-    <title>Puzzle & Dragons</title> <!-- Заголовок страницы -->
-    <style>
-        body {
-            font-family: Arial, sans-serif; /* Основной шрифт */
-            background-color: #f4f4f4; /* Цвет фона страницы */
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh; /* Полная высота viewport */
-        }
-        .container {
-            text-align: center; /* Центрирование содержимого по горизонтали */
-            background-color: white; /* Фон контейнера */
-            padding: 20px; /* Внутренние отступы */
-            border-radius: 10px; /* Скругление углов */
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Тень вокруг блока */
-        }
-        h1 {
-            color: #333; /* Цвет заголовка */
-        }
-        canvas {
-            border: 1px solid #ccc; /* Граница игрового поля */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Puzzle & Dragons</h1> <!-- Главный заголовок игры -->
-        <canvas id="gameCanvas" width="300" height="500"></canvas> <!-- Игровое поле -->
-        <button id="startButton">Start Game</button> <!-- Кнопка начала игры -->
-    </div>
+<div class="game-container" id="game-container"></div>
 
-    <script>
-        // JavaScript код будет здесь
-    </script>
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
+
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
+
+  // Initialize the game
+  createGrid();
+</script>
 
 </body>
 </html>
