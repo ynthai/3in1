@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle Dagons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
-    /* Стили из оригинального проекта */
     body {
       margin: 0;
       padding: 0;
@@ -13,179 +12,90 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: url('https://raw.githubusercontent.com/ynthai/puzzle-dagons/main/assets/background.jpg') no-repeat center center fixed;
-      background-size: cover;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    .grid {
+    .game-container {
       display: grid;
-      grid-template-columns: repeat(8, 50px);
-      grid-template-rows: repeat(8, 50px);
-      gap: 2px;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .cell {
+    .tile {
       width: 50px;
       height: 50px;
-      border-radius: 5px;
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
-    /* CSS анимации для удаления совпадений */
-    .cell.matching {
-      animation: fadeOut 0.5s forwards;
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    @keyframes fadeOut {
-      from {
-        opacity: 1;
-      }
-      to {
-        opacity: 0;
-        transform: scale(0);
-      }
-    }
-
-    /* Цветовая палитра для драгончиков (сохранена из оригинала) */
-    .red { background-color: #FF5733; }
-    .blue { background-color: #335BFF; }
-    .green { background-color: #33FF57; }
-    .yellow { background-color: #FFF933; }
-    .purple { background-color: #B333FF; }
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <div class="grid" id="grid"></div>
 
-  <script>
-    // Исходный код из GitHub с добавленными улучшениями
+<div class="game-container" id="game-container"></div>
 
-    const gridSize = 8;
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    let board = [];
-    let score = 0;
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-    // Создание игрового поля
-    function createBoard() {
-      const grid = document.getElementById('grid');
-      for (let r = 0; r < gridSize; r++) {
-        const row = [];
-        for (let c = 0; c < gridSize; c++) {
-          const color = colors[Math.floor(Math.random() * colors.length)];
-          const cell = document.createElement('div');
-          cell.classList.add('cell', color);
-          cell.setAttribute('row', r);
-          cell.setAttribute('col', c);
-          grid.appendChild(cell);
-          row.push(color);
-        }
-        board.push(row);
-      }
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    // Проверка совпадений
-    function checkMatches() {
-      let matches = [];
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-      // Проверка горизонтальных совпадений
-      for (let r = 0; r < gridSize; r++) {
-        for (let c = 0; c <= gridSize - 3; c++) {
-          const cell1 = board[r][c];
-          const cell2 = board[r][c + 1];
-          const cell3 = board[r][c + 2];
-          if (cell1 === cell2 && cell2 === cell3 && cell1 !== '') {
-            matches.push({ row: r, col: c });
-            matches.push({ row: r, col: c + 1 });
-            matches.push({ row: r, col: c + 2 });
-          }
-        }
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
-
-      // Проверка вертикальных совпадений
-      for (let c = 0; c < gridSize; c++) {
-        for (let r = 0; r <= gridSize - 3; r++) {
-          const cell1 = board[r][c];
-          const cell2 = board[r + 1][c];
-          const cell3 = board[r + 2][c];
-          if (cell1 === cell2 && cell2 === cell3 && cell1 !== '') {
-            matches.push({ row: r, col: c });
-            matches.push({ row: r + 1, col: c });
-            matches.push({ row: r + 2, col: c });
-          }
-        }
-      }
-
-      // Проверка L-образных совпадений (два по горизонтали и один по вертикали)
-      for (let r = 0; r < gridSize - 1; r++) {
-        for (let c = 0; c < gridSize - 2; c++) {
-          const cell1 = board[r][c];
-          const cell2 = board[r][c + 1];
-          const cell3 = board[r + 1][c + 1];
-          if (cell1 === cell2 && cell2 === cell3 && cell1 !== '') {
-            matches.push({ row: r, col: c });
-            matches.push({ row: r, col: c + 1 });
-            matches.push({ row: r + 1, col: c + 1 });
-          }
-        }
-      }
-
-      return matches;
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    // Удаление совпадений
-    function removeMatches(matches) {
-      matches.forEach(({ row, col }) => {
-        const cell = document.querySelector(`[row="${row}"][col="${col}"]`);
-        if (cell) {
-          cell.classList.add('matching');
-          setTimeout(() => {
-            cell.remove();
-            board[row][col] = '';
-          }, 500);
-        }
-      });
-    }
+  // Initialize the game
+  createGrid();
+</script>
 
-    // Добавление новых драгончиков
-    function addNewDragons() {
-      for (let c = 0; c < gridSize; c++) {
-        let emptyCells = [];
-        for (let r = 0; r < gridSize; r++) {
-          if (board[r][c] === '') {
-            emptyCells.push({ row: r, col: c });
-          }
-        }
-        for (const { row, col } of emptyCells) {
-          const newColor = colors[Math.floor(Math.random() * colors.length)];
-          const newCell = document.createElement('div');
-          newCell.classList.add('cell', newColor);
-          newCell.setAttribute('row', row);
-          newCell.setAttribute('col', col);
-          document.querySelector(`[row="${row}"][col="${col}"]`).replaceWith(newCell);
-          board[row][col] = newColor;
-        }
-      }
-    }
-
-    // Главный цикл игры
-    function gameLoop() {
-      let matches = checkMatches();
-      if (matches.length > 0) {
-        removeMatches(matches);
-        setTimeout(() => {
-          addNewDragons();
-          setTimeout(gameLoop, 500); // Проверка новых совпадений через 0.5 секунды
-        }, 500);
-      }
-    }
-
-    // Инициализация игры
-    createBoard();
-
-    // Запуск цикла после каждого хода игрока
-    document.addEventListener('click', () => {
-      setTimeout(gameLoop, 500);
-    });
-  </script>
 </body>
 </html>
