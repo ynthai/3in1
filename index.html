@@ -1,100 +1,131 @@
+<!-- Стиль игры сохранен в виде простой минималистичной сетки с яркими цветами для гемов -->
+<!-- Все изменения будут следовать этому стилю, чтобы сохранить консистентность визуального дизайна -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minimalist Puzzle Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
-      font-family: 'Helvetica', sans-serif;
-    }
-
-    .game-container {
-      display: grid;
-      grid-template-columns: repeat(6, 50px);
-      grid-template-rows: repeat(6, 50px);
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .tile {
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-
-    .tile:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle & Dragons</title>
+    <style>
+        /* Базовый стиль игрового поля */
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(6, 50px);
+            grid-gap: 2px;
+        }
+        .gem {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+        }
+        /* Цвета гемов сохранены в текущей палитре */
+        .red { background-color: red; }
+        .blue { background-color: blue; }
+        .green { background-color: green; }
+        .yellow { background-color: yellow; }
+        .purple { background-color: purple; }
+    </style>
 </head>
 <body>
 
-<div class="game-container" id="game-container"></div>
+<div id="game-board" class="game-board"></div>
 
 <script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let selectedTile = null;
+    const boardSize = 6; // Размер игрового поля
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple']; // Доступные цвета гемов
 
-  // Create the game grid
-  function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
+    let board = [];
+
+    // Создание начальной игровой доски
+    function createBoard() {
+        const gameBoard = document.getElementById('game-board');
+        for (let row = 0; row < boardSize; row++) {
+            board[row] = [];
+            for (let col = 0; col < boardSize; col++) {
+                const gemColor = colors[Math.floor(Math.random() * colors.length)];
+                const gemElement = document.createElement('div');
+                gemElement.classList.add('gem', gemColor);
+                gemElement.setAttribute('data-row', row);
+                gemElement.setAttribute('data-col', col);
+                gemElement.setAttribute('draggable', true);
+                gemElement.addEventListener('dragstart', dragStart);
+                gemElement.addEventListener('dragover', dragOver);
+                gemElement.addEventListener('drop', dropGem);
+                gameBoard.appendChild(gemElement);
+                board[row][col] = gemColor;
+            }
+        }
     }
-  }
 
-  // Get a random color from the colors array
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+    // Проверка совпадений после перемещения
+    function checkMatches(row, col) {
+        const colorToCheck = board[row][col];
+        let matchCountRow = 1;
+        let matchCountCol = 1;
 
-  // Select a tile to swap
-  function selectTile(e) {
-    if (!selectedTile) {
-      selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const currentTile = e.target;
-      if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
-      }
-      selectedTile.style.border = '';
-      selectedTile = null;
+        // Проверка по горизонтали
+        for (let i = col + 1; i < boardSize && board[row][i] === colorToCheck; i++) {
+            matchCountRow++;
+        }
+        for (let i = col - 1; i >= 0 && board[row][i] === colorToCheck; i--) {
+            matchCountRow++;
+        }
+
+        // Проверка по вертикали
+        for (let i = row + 1; i < boardSize && board[i][col] === colorToCheck; i++) {
+            matchCountCol++;
+        }
+        for (let i = row - 1; i >= 0 && board[i][col] === colorToCheck; i--) {
+            matchCountCol++;
+        }
+
+        if (matchCountRow >= 3 || matchCountCol >= 3) {
+            console.log("Match found!");
+            return true;
+        }
+        return false;
     }
-  }
 
-  // Initialize the game
-  createGrid();
+    let draggedGem = null;
+
+    function dragStart(e) {
+        draggedGem = this;
+        e.dataTransfer.setData("text/plain", '');
+    }
+
+    function dragOver(e) {
+        e.preventDefault();
+    }
+
+    function dropGem(e) {
+        const targetGem = this;
+        const draggedRow = parseInt(draggedGem.getAttribute('data-row'));
+        const draggedCol = parseInt(draggedGem.getAttribute('data-col'));
+        const targetRow = parseInt(targetGem.getAttribute('data-row'));
+        const targetCol = parseInt(targetGem.getAttribute('data-col'));
+
+        if (Math.abs(draggedRow - targetRow) + Math.abs(draggedCol - targetCol) === 1) {
+            // Меняем местами элементы на доске
+            [board[draggedRow][draggedCol], board[targetRow][targetCol]] = 
+                [board[targetRow][targetCol], board[draggedRow][draggedCol]];
+
+            // Обновляем визуальное представление
+            [draggedGem.className, targetGem.className] = 
+                [targetGem.className, draggedGem.className];
+
+            // Проверяем наличие совпадений
+            if (!checkMatches(draggedRow, draggedCol) && !checkMatches(targetRow, targetCol)) {
+                // Если совпадений нет, возвращаем все назад
+                [board[draggedRow][draggedCol], board[targetRow][targetCol]] = 
+                    [board[targetRow][targetCol], board[draggedRow][draggedCol]];
+                [draggedGem.className, targetGem.className] = 
+                    [targetGem.className, draggedGem.className];
+            }
+        }
+    }
+
+    createBoard();
 </script>
 
 </body>
