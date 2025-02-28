@@ -1,85 +1,101 @@
-// Основной файл index.js
-
-// Импортируем необходимые модули (если они есть)
-// (оставляем как есть)
-
-// ... (все предыдущие части кода остаются без изменений)
-
-// Функция для поиска и удаления совпадений
-function findAndRemoveMatches(grid) {
-    let matches = [];
-
-    // Проверяем горизонтальные совпадения
-    for (let row = 0; row < grid.length; row++) {
-        for (let col = 0; col < grid[row].length - 2; col++) {
-            if (
-                grid[row][col] &&
-                grid[row][col] === grid[row][col + 1] &&
-                grid[row][col] === grid[row][col + 2]
-            ) {
-                matches.push({ row, col });
-                matches.push({ row, col: col + 1 });
-                matches.push({ row, col: col + 2 });
-            }
-        }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    // Проверяем вертикальные совпадения
-    for (let col = 0; col < grid[0].length; col++) {
-        for (let row = 0; row < grid.length - 2; row++) {
-            if (
-                grid[row][col] &&
-                grid[row][col] === grid[row + 1][col] &&
-                grid[row][col] === grid[row + 2][col]
-            ) {
-                matches.push({ row, col });
-                matches.push({ row: row + 1, col });
-                matches.push({ row: row + 2, col });
-            }
-        }
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    // Проверяем "T"-образные совпадения
-    for (let row = 0; row < grid.length; row++) {
-        for (let col = 0; col < grid[row].length; col++) {
-            if (
-                grid[row][col] &&
-                ((row > 0 && grid[row - 1][col] === grid[row][col]) || // Верхняя часть "T"
-                 (row < grid.length - 1 && grid[row + 1][col] === grid[row][col])) && // Нижняя часть "T"
-                (col > 0 && grid[row][col - 1] === grid[row][col]) && // Левая часть "T"
-                (col < grid[row].length - 1 && grid[row][col + 1] === grid[row][col])) // Правая часть "T"
-            ) {
-                matches.push({ row, col });
-                if (row > 0) matches.push({ row: row - 1, col });
-                if (row < grid.length - 1) matches.push({ row: row + 1, col });
-                if (col > 0) matches.push({ row, col: col - 1 });
-                if (col < grid[row].length - 1) matches.push({ row, col: col + 1 });
-            }
-        }
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
-    // Удаляем найденные совпадения
-    matches.forEach(({ row, col }) => {
-        grid[row][col] = null;
-    });
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-    return matches.length > 0; // Возвращаем true, если были найдены совпадения
-}
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
+</head>
+<body>
 
-// Функция для периодической проверки совпадений
-function checkForMatchesInterval() {
-    setInterval(() => {
-        if (findAndRemoveMatches(gameGrid)) {
-            // Если найдены совпадения, обновляем игровое поле
-            updateGameGrid();
-        }
-    }, 500); // Проверяем каждые 0.5 секунды
-}
+<div class="game-container" id="game-container"></div>
 
-// Вызываем функцию проверки при старте игры
-checkForMatchesInterval();
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-// ... (все остальные части кода остаются без изменений)
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
+    }
+  }
 
-// Функции отрисовки, обработки событий и т.д. остаются неизменными
-// (копируем их напрямую из исходного кода на GitHub)
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
+    }
+  }
+
+  // Initialize the game
+  createGrid();
+</script>
+
+</body>
+</html>
