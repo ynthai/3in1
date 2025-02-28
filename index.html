@@ -1,212 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzle & Dragons</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimalist Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
+    }
 
-        .board {
-            display: grid;
-            grid-template-columns: repeat(6, 50px);
-            grid-template-rows: repeat(6, 50px);
-            gap: 2px;
-        }
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 
-        .cell {
-            width: 50px;
-            height: 50px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 5px;
-            transition: transform 0.3s ease, opacity 0.3s ease;
-        }
+    .tile {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
 
-        .cell.empty {
-            background-color: #ddd;
-        }
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-        .cell.red { background-color: #ff4d4d; }
-        .cell.blue { background-color: #4d79ff; }
-        .cell.green { background-color: #4dff4d; }
-        .cell.yellow { background-color: #ffff4d; }
-        .cell.purple { background-color: #b34dff; }
-
-        .cell.match {
-            animation: fadeOut 0.5s forwards;
-        }
-
-        @keyframes fadeOut {
-            0% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(0.5); }
-        }
-
-        .cell.fall {
-            animation: fall 0.5s ease-in-out;
-        }
-
-        @keyframes fall {
-            from { transform: translateY(-50px); }
-            to { transform: translateY(0); }
-        }
-    </style>
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
+  </style>
 </head>
 <body>
 
-<div id="game-board" class="board"></div>
+<div class="game-container" id="game-container"></div>
 
 <script>
-    const boardSize = 6;
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-    let gameBoard = [];
-    let isCheckingMatches = false;
-
-    // Генерация случайного цвета
-    function getRandomColor() {
-        return colors[Math.floor(Math.random() * colors.length)];
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    // Создание игрового поля
-    function generateBoard() {
-        const board = [];
-        for (let row = 0; row < boardSize; row++) {
-            board[row] = [];
-            for (let col = 0; col < boardSize; col++) {
-                board[row][col] = getRandomColor();
-            }
-        }
-        return board;
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
+      }
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    // Отрисовка игрового поля
-    function drawBoard(board) {
-        const boardElement = document.getElementById('game-board');
-        boardElement.innerHTML = '';
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell', board[row][col]);
-                cell.dataset.row = row;
-                cell.dataset.col = col;
-                boardElement.appendChild(cell);
-            }
-        }
-    }
-
-    // Проверка совпадений
-    function checkMatches(board) {
-        const matches = [];
-
-        // Проверка горизонтальных совпадений
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize - 2; col++) {
-                if (board[row][col] && board[row][col] === board[row][col + 1] && board[row][col] === board[row][col + 2]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row, col: col + 1 });
-                    matches.push({ row: row, col: col + 2 });
-                }
-            }
-        }
-
-        // Проверка вертикальных совпадений
-        for (let col = 0; col < boardSize; col++) {
-            for (let row = 0; row < boardSize - 2; row++) {
-                if (board[row][col] && board[row][col] === board[row + 1][col] && board[row][col] === board[row + 2][col]) {
-                    matches.push({ row: row, col: col });
-                    matches.push({ row: row + 1, col: col });
-                    matches.push({ row: row + 2, col: col });
-                }
-            }
-        }
-
-        return matches;
-    }
-
-    // Удаление совпадений
-    function removeMatches(matches, board) {
-        matches.forEach(match => {
-            const { row, col } = match;
-            board[row][col] = null;
-            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-            if (cell) {
-                cell.classList.add('match');
-                setTimeout(() => {
-                    cell.classList.remove('match');
-                    cell.classList.add('empty');
-                }, 500);
-            }
-        });
-
-        // Сдвиг элементов вниз
-        for (let col = 0; col < boardSize; col++) {
-            let emptyRow = boardSize - 1;
-            for (let row = boardSize - 1; row >= 0; row--) {
-                if (board[row][col]) {
-                    if (row !== emptyRow) {
-                        board[emptyRow][col] = board[row][col];
-                        board[row][col] = null;
-
-                        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                        if (cell) {
-                            cell.classList.add('fall');
-                            cell.dataset.row = emptyRow;
-                            setTimeout(() => cell.classList.remove('fall'), 500);
-                        }
-                    }
-                    emptyRow--;
-                }
-            }
-        }
-
-        // Заполнение пустых ячеек новыми элементами
-        for (let col = 0; col < boardSize; col++) {
-            for (let row = 0; row < boardSize; row++) {
-                if (!board[row][col]) {
-                    board[row][col] = getRandomColor();
-                    const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-                    if (cell) {
-                        cell.classList.remove('empty');
-                        cell.classList.add(board[row][col]);
-                    }
-                }
-            }
-        }
-    }
-
-    // Автоматическая проверка совпадений
-    function autoCheckMatches() {
-        if (isCheckingMatches) return;
-        isCheckingMatches = true;
-
-        const matches = checkMatches(gameBoard);
-        if (matches.length > 0) {
-            removeMatches(matches, gameBoard);
-        }
-
-        setTimeout(() => {
-            isCheckingMatches = false;
-        }, 500);
-    }
-
-    // Инициализация игры
-    function initGame() {
-        gameBoard = generateBoard();
-        drawBoard(gameBoard);
-        setInterval(autoCheckMatches, 500);
-    }
-
-    initGame();
+  // Initialize the game
+  createGrid();
 </script>
 
 </body>
