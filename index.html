@@ -3,213 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle Dagons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
     body {
+      margin: 0;
+      padding: 0;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
-      background-color: #f0f0f0;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
     .game-container {
       display: grid;
-      grid-template-columns: repeat(8, 50px);
-      grid-template-rows: repeat(8, 50px);
-      gap: 2px;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .tile {
       width: 50px;
       height: 50px;
-      background-color: #ccc;
-      border-radius: 5px;
+      border-radius: 10px;
       cursor: pointer;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
-
-    .tile.color1 { background-color: red; }
-    .tile.color2 { background-color: blue; }
-    .tile.color3 { background-color: green; }
-    .tile.color4 { background-color: yellow; }
-    .tile.color5 { background-color: purple; }
-    .tile.color6 { background-color: orange; }
 
     .tile:hover {
-      opacity: 0.7;
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <div class="game-container"></div>
 
-  <script>
-    const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-    const gameContainer = document.querySelector('.game-container');
-    let tiles = [];
-    let isSwapping = false;
+<div class="game-container" id="game-container"></div>
 
-    function createGameGrid() {
-      for (let i = 0; i < 64; i++) {
-        const tile = document.createElement('div');
-        tile.classList.add('tile', getRandomColor());
-        tile.dataset.index = i;
-        gameContainer.appendChild(tile);
-        tiles.push(tile);
-      }
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
+
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    function getRandomColor() {
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-    function swapTiles(index1, index2) {
-      if (isSwapping) return;
-      isSwapping = true;
-
-      const tile1 = tiles[index1];
-      const tile2 = tiles[index2];
-
-      const tempColor = tile1.classList[1];
-      tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-      tile2.classList.replace(tile2.classList[1], tempColor);
-
-      setTimeout(() => {
-        checkMatches();
-        isSwapping = false;
-      }, 500);
-    }
-
-    function checkMatches() {
-      let matches = findMatches();
-      while (matches.length > 0) {
-        removeMatches(matches);
-        fillEmptySpaces();
-        matches = findMatches();
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    function findMatches() {
-      const matches = [];
+  // Initialize the game
+  createGrid();
+</script>
 
-      // Check horizontal matches
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col <= 5; col++) {
-          const startIndex = row * 8 + col;
-          const color = tiles[startIndex].classList[1];
-          if (
-            color &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 1].classList[1] &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 2].classList[1]
-          ) {
-            matches.push(startIndex, startIndex + 1, startIndex + 2);
-          }
-        }
-      }
-
-      // Check vertical matches
-      for (let col = 0; col < 8; col++) {
-        for (let row = 0; row <= 5; row++) {
-          const startIndex = row * 8 + col;
-          const color = tiles[startIndex].classList[1];
-          if (
-            color &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 8].classList[1] &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 16].classList[1]
-          ) {
-            matches.push(startIndex, startIndex + 8, startIndex + 16);
-          }
-        }
-      }
-
-      // Check L-shaped matches
-      for (let row = 0; row <= 6; row++) {
-        for (let col = 0; col <= 6; col++) {
-          const startIndex = row * 8 + col;
-          const color = tiles[startIndex].classList[1];
-          if (
-            color &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 1].classList[1] &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 8].classList[1]
-          ) {
-            matches.push(startIndex, startIndex + 1, startIndex + 8);
-          }
-        }
-      }
-
-      // Check T-shaped matches
-      for (let row = 1; row <= 6; row++) {
-        for (let col = 1; col <= 6; col++) {
-          const startIndex = row * 8 + col;
-          const color = tiles[startIndex].classList[1];
-          if (
-            color &&
-            tiles[startIndex].classList[1] === tiles[startIndex - 1].classList[1] &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 1].classList[1] &&
-            tiles[startIndex].classList[1] === tiles[startIndex + 8].classList[1]
-          ) {
-            matches.push(startIndex, startIndex - 1, startIndex + 1, startIndex + 8);
-          }
-        }
-      }
-
-      return Array.from(new Set(matches));
-    }
-
-    function removeMatches(indices) {
-      indices.forEach(index => {
-        tiles[index].classList.remove(tiles[index].classList[1]);
-        tiles[index].classList.add('empty');
-      });
-
-      setTimeout(() => {
-        fillEmptySpaces();
-      }, 500);
-    }
-
-    function fillEmptySpaces() {
-      for (let col = 0; col < 8; col++) {
-        for (let row = 7; row >= 0; row--) {
-          const index = row * 8 + col;
-          if (tiles[index].classList.contains('empty')) {
-            let emptyCount = 0;
-            for (let r = row - 1; r >= 0; r--) {
-              const aboveIndex = r * 8 + col;
-              if (!tiles[aboveIndex].classList.contains('empty')) {
-                tiles[index].classList.replace('empty', tiles[aboveIndex].classList[1]);
-                tiles[aboveIndex].classList.add('empty');
-                break;
-              } else {
-                emptyCount++;
-              }
-            }
-            if (emptyCount === row) {
-              tiles[index].classList.replace('empty', getRandomColor());
-            }
-          }
-        }
-      }
-    }
-
-    gameContainer.addEventListener('click', e => {
-      const clickedTile = e.target;
-      if (!clickedTile.classList.contains('tile')) return;
-
-      const clickedIndex = parseInt(clickedTile.dataset.index);
-      const validIndices = [
-        clickedIndex - 1, // Left
-        clickedIndex + 1, // Right
-        clickedIndex - 8, // Up
-        clickedIndex + 8  // Down
-      ].filter(index => index >= 0 && index < 64);
-
-      validIndices.forEach(index => {
-        clickedTile.addEventListener('mousedown', () => swapTiles(clickedIndex, index));
-      });
-    });
-
-    createGameGrid();
-  </script>
 </body>
 </html>
