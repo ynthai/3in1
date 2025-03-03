@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Puzzle Dragons</title>
   <style>
-    /* Стили остаются без изменений */
     body {
       margin: 0;
       padding: 0;
@@ -13,7 +12,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: #f0f8ff;
+      background: #f0f8ff; /* Minimally soft blue */
       font-family: 'Helvetica', sans-serif;
     }
 
@@ -41,12 +40,12 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .color1 { background: #ffcccb; }
-    .color2 { background: #b0e0e6; }
-    .color3 { background: #fff8dc; }
-    .color4 { background: #d1e231; }
-    .color5 { background: #deb887; }
-    .color6 { background: #add8e6; }
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
@@ -128,69 +127,80 @@
 
   // Проверка совпадений
   function checkMatches() {
-    const matches = [];
+    const matches = new Set();
+
     // Проверка горизонтальных совпадений
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col <= gridSize - 3; col++) {
         const firstTile = tiles[row * gridSize + col];
         const secondTile = tiles[row * gridSize + col + 1];
         const thirdTile = tiles[row * gridSize + col + 2];
-        if (firstTile.classList[1] === secondTile.classList[1] && secondTile.classList[1] === thirdTile.classList[1]) {
-          matches.push(firstTile, secondTile, thirdTile);
+        if (firstTile.classList[1] === secondTile.classList[1] &&
+            secondTile.classList[1] === thirdTile.classList[1]) {
+          matches.add(firstTile);
+          matches.add(secondTile);
+          matches.add(thirdTile);
           findLShape(row, col, firstTile.classList[1], matches);
           findTShape(row, col, firstTile.classList[1], matches);
         }
       }
     }
+
     // Проверка вертикальных совпадений
     for (let col = 0; col < gridSize; col++) {
       for (let row = 0; row <= gridSize - 3; row++) {
         const firstTile = tiles[row * gridSize + col];
         const secondTile = tiles[(row + 1) * gridSize + col];
         const thirdTile = tiles[(row + 2) * gridSize + col];
-        if (firstTile.classList[1] === secondTile.classList[1] && secondTile.classList[1] === thirdTile.classList[1]) {
-          matches.push(firstTile, secondTile, thirdTile);
+        if (firstTile.classList[1] === secondTile.classList[1] &&
+            secondTile.classList[1] === thirdTile.classList[1]) {
+          matches.add(firstTile);
+          matches.add(secondTile);
+          matches.add(thirdTile);
           findLShapeVertical(row, col, firstTile.classList[1], matches);
           findTShapeVertical(row, col, firstTile.classList[1], matches);
         }
       }
     }
-    return matches;
+
+    return Array.from(matches);
   }
 
   // Поиск L-образных совпадений
   function findLShape(row, col, color, matches) {
-    if (row > 0 && tiles[(row - 1) * gridSize + col].classList[1] === color) {
-      matches.push(tiles[(row - 1) * gridSize + col]);
+    if (row > 0 && tiles[(row - 1) * gridSize + col]?.classList.contains(color)) {
+      matches.add(tiles[(row - 1) * gridSize + col]);
     }
-    if (row < gridSize - 1 && tiles[(row + 1) * gridSize + col].classList[1] === color) {
-      matches.push(tiles[(row + 1) * gridSize + col]);
+    if (row < gridSize - 1 && tiles[(row + 1) * gridSize + col]?.classList.contains(color)) {
+      matches.add(tiles[(row + 1) * gridSize + col]);
     }
   }
 
   // Поиск T-образных совпадений
   function findTShape(row, col, color, matches) {
-    if (row > 0 && tiles[(row - 1) * gridSize + col].classList[1] === color &&
-        row < gridSize - 1 && tiles[(row + 1) * gridSize + col].classList[1] === color) {
-      matches.push(tiles[(row - 1) * gridSize + col], tiles[(row + 1) * gridSize + col]);
+    if (row > 0 && tiles[(row - 1) * gridSize + col]?.classList.contains(color) &&
+        row < gridSize - 1 && tiles[(row + 1) * gridSize + col]?.classList.contains(color)) {
+      matches.add(tiles[(row - 1) * gridSize + col]);
+      matches.add(tiles[(row + 1) * gridSize + col]);
     }
   }
 
   // Поиск L-образных совпадений вертикально
   function findLShapeVertical(row, col, color, matches) {
-    if (col > 0 && tiles[row * gridSize + col - 1].classList[1] === color) {
-      matches.push(tiles[row * gridSize + col - 1]);
+    if (col > 0 && tiles[row * gridSize + col - 1]?.classList.contains(color)) {
+      matches.add(tiles[row * gridSize + col - 1]);
     }
-    if (col < gridSize - 1 && tiles[row * gridSize + col + 1].classList[1] === color) {
-      matches.push(tiles[row * gridSize + col + 1]);
+    if (col < gridSize - 1 && tiles[row * gridSize + col + 1]?.classList.contains(color)) {
+      matches.add(tiles[row * gridSize + col + 1]);
     }
   }
 
   // Поиск T-образных совпадений вертикально
   function findTShapeVertical(row, col, color, matches) {
-    if (col > 0 && tiles[row * gridSize + col - 1].classList[1] === color &&
-        col < gridSize - 1 && tiles[row * gridSize + col + 1].classList[1] === color) {
-      matches.push(tiles[row * gridSize + col - 1], tiles[row * gridSize + col + 1]);
+    if (col > 0 && tiles[row * gridSize + col - 1]?.classList.contains(color) &&
+        col < gridSize - 1 && tiles[row * gridSize + col + 1]?.classList.contains(color)) {
+      matches.add(tiles[row * gridSize + col - 1]);
+      matches.add(tiles[row * gridSize + col + 1]);
     }
   }
 
@@ -200,9 +210,13 @@
       match.classList.remove(...match.classList);
       match.classList.add('empty');
     });
+
     setTimeout(() => {
       applyGravity();
-      checkAndRemoveMatches();
+      const remainingMatches = checkMatches();
+      if (remainingMatches.length > 0) {
+        removeMatches(remainingMatches);
+      }
     }, 500); // Задержка для анимации
   }
 
@@ -236,7 +250,7 @@
 
   // Основная функция проверки и удаления совпадений
   function checkAndRemoveMatches() {
-    let matches = checkMatches();
+    const matches = checkMatches();
     if (matches.length > 0) {
       removeMatches(matches);
     }
