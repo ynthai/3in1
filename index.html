@@ -61,18 +61,13 @@
 
   // Create the game grid
   function createGrid() {
-    while (true) {
-      tiles = [];
-      gameContainer.innerHTML = '';
-      for (let i = 0; i < gridSize * gridSize; i++) {
-        const tile = document.createElement('div');
-        tile.classList.add('tile', getRandomColor());
-        tile.setAttribute('draggable', true);
-        tile.addEventListener('click', selectTile);
-        gameContainer.appendChild(tile);
-        tiles.push(tile);
-      }
-      if (!hasInitialMatches()) break;
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
   }
 
@@ -88,219 +83,13 @@
       selectedTile.style.border = '2px solid #000';
     } else {
       const currentTile = e.target;
-      if (selectedTile !== currentTile && areNeighbors(selectedTile, currentTile)) {
-        swapTiles(selectedTile, currentTile);
-        setTimeout(() => {
-          const matches = findMatches();
-          if (matches.length > 0) {
-            removeMatches(matches);
-            fillEmptySpaces();
-            checkForMatches();
-          } else {
-            swapTiles(currentTile, selectedTile); // Swap back if no matches
-          }
-        }, 200);
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
       selectedTile.style.border = '';
       selectedTile = null;
-    }
-  }
-
-  // Check if two tiles are neighbors
-  function areNeighbors(tile1, tile2) {
-    const index1 = tiles.indexOf(tile1);
-    const index2 = tiles.indexOf(tile2);
-    const row1 = Math.floor(index1 / gridSize);
-    const row2 = Math.floor(index2 / gridSize);
-    const col1 = index1 % gridSize;
-    const col2 = index2 % gridSize;
-    return (Math.abs(row1 - row2) === 1 && col1 === col2) || (row1 === row2 && Math.abs(col1 - col2) === 1);
-  }
-
-  // Swap two tiles
-  function swapTiles(tile1, tile2) {
-    const temp = tile1.classList[1];
-    tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-    tile2.classList.replace(tile2.classList[1], temp);
-  }
-
-  // Check for initial matches during grid creation
-  function hasInitialMatches() {
-    const grid = Array.from(tiles).map(tile => tile.classList[1]);
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize - 2; col++) {
-        if (isHorizontalMatch(row, col, grid[row * gridSize + col])) return true;
-      }
-    }
-    for (let col = 0; col < gridSize; col++) {
-      for (let row = 0; row < gridSize - 2; row++) {
-        if (isVerticalMatch(row, col, grid[row * gridSize + col])) return true;
-      }
-    }
-    return false;
-  }
-
-  // Find all matches on the board
-  function findMatches() {
-    const matches = new Set();
-    const grid = Array.from(tiles).map(tile => tile.classList[1]);
-
-    // Horizontal matches
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize - 2; col++) {
-        if (isHorizontalMatch(row, col, grid[row * gridSize + col])) {
-          getHorizontalMatchCoordinates(row, col).forEach(index => matches.add(index));
-        }
-      }
-    }
-
-    // Vertical matches
-    for (let col = 0; col < gridSize; col++) {
-      for (let row = 0; row < gridSize - 2; row++) {
-        if (isVerticalMatch(row, col, grid[row * gridSize + col])) {
-          getVerticalMatchCoordinates(row, col).forEach(index => matches.add(index));
-        }
-      }
-    }
-
-    // L-shape matches
-    for (let row = 0; row < gridSize - 1; row++) {
-      for (let col = 0; col < gridSize - 2; col++) {
-        if (isLShapeMatch(row, col, grid[row * gridSize + col])) {
-          getLShapeMatchCoordinates(row, col).forEach(index => matches.add(index));
-        }
-      }
-    }
-
-    // T-shape matches
-    for (let row = 0; row < gridSize - 1; row++) {
-      for (let col = 0; col < gridSize - 2; col++) {
-        if (isTShapeMatch(row, col, grid[row * gridSize + col])) {
-          getTShapeMatchCoordinates(row, col).forEach(index => matches.add(index));
-        }
-      }
-    }
-
-    return [...matches];
-  }
-
-  // Check for horizontal matches
-  function isHorizontalMatch(row, col, color) {
-    return (
-      isValidIndex(row, col) &&
-      isValidIndex(row, col + 1) &&
-      isValidIndex(row, col + 2) &&
-      tiles[row * gridSize + col].classList.contains(color) &&
-      tiles[row * gridSize + col + 1].classList.contains(color) &&
-      tiles[row * gridSize + col + 2].classList.contains(color)
-    );
-  }
-
-  // Get horizontal match coordinates
-  function getHorizontalMatchCoordinates(row, col) {
-    return [row * gridSize + col, row * gridSize + col + 1, row * gridSize + col + 2];
-  }
-
-  // Check for vertical matches
-  function isVerticalMatch(row, col, color) {
-    return (
-      isValidIndex(row, col) &&
-      isValidIndex(row + 1, col) &&
-      isValidIndex(row + 2, col) &&
-      tiles[row * gridSize + col].classList.contains(color) &&
-      tiles[(row + 1) * gridSize + col].classList.contains(color) &&
-      tiles[(row + 2) * gridSize + col].classList.contains(color)
-    );
-  }
-
-  // Get vertical match coordinates
-  function getVerticalMatchCoordinates(row, col) {
-    return [row * gridSize + col, (row + 1) * gridSize + col, (row + 2) * gridSize + col];
-  }
-
-  // Check for L-shape matches
-  function isLShapeMatch(row, col, color) {
-    return (
-      isHorizontalMatch(row, col, color) &&
-      isValidIndex(row + 1, col + 2) &&
-      tiles[(row + 1) * gridSize + col + 2]?.classList.contains(color)
-    );
-  }
-
-  // Get L-shape match coordinates
-  function getLShapeMatchCoordinates(row, col) {
-    return [
-      row * gridSize + col,
-      row * gridSize + col + 1,
-      row * gridSize + col + 2,
-      (row + 1) * gridSize + col + 2
-    ];
-  }
-
-  // Check for T-shape matches
-  function isTShapeMatch(row, col, color) {
-    return (
-      isHorizontalMatch(row, col, color) &&
-      isValidIndex(row + 1, col + 1) &&
-      tiles[(row + 1) * gridSize + col + 1]?.classList.contains(color)
-    );
-  }
-
-  // Get T-shape match coordinates
-  function getTShapeMatchCoordinates(row, col) {
-    return [
-      row * gridSize + col,
-      row * gridSize + col + 1,
-      row * gridSize + col + 2,
-      (row + 1) * gridSize + col + 1
-    ];
-  }
-
-  // Check if index is valid
-  function isValidIndex(row, col) {
-    return row >= 0 && row < gridSize && col >= 0 && col < gridSize;
-  }
-
-  // Remove matches and animate removal
-  function removeMatches(matches) {
-    matches.forEach(index => {
-      tiles[index].classList.remove(...tiles[index].classList);
-      tiles[index].classList.add('empty');
-    });
-
-    setTimeout(() => {
-      fillEmptySpaces();
-      checkForMatches();
-    }, 500);
-  }
-
-  // Fill empty spaces with tiles from above
-  function fillEmptySpaces() {
-    for (let col = 0; col < gridSize; col++) {
-      for (let row = gridSize - 1; row >= 0; row--) {
-        const index = row * gridSize + col;
-        if (tiles[index].classList.contains('empty')) {
-          for (let r = row - 1; r >= 0; r--) {
-            const upperIndex = r * gridSize + col;
-            if (!tiles[upperIndex].classList.contains('empty')) {
-              swapTiles(tiles[index], tiles[upperIndex]);
-              break;
-            }
-          }
-          if (tiles[index].classList.contains('empty')) {
-            tiles[index].classList.remove('empty');
-            tiles[index].classList.add(getRandomColor());
-          }
-        }
-      }
-    }
-  }
-
-  // Continuously check for matches after removal
-  function checkForMatches() {
-    const matches = findMatches();
-    if (matches.length > 0) {
-      removeMatches(matches);
     }
   }
 
