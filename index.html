@@ -46,11 +46,6 @@
     .color4 { background: #d1e231; } /* Lime green */
     .color5 { background: #deb887; } /* Burlywood */
     .color6 { background: #add8e6; } /* Light blue */
-
-    .fade-out {
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-    }
   </style>
 </head>
 <body>
@@ -74,7 +69,9 @@
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
-    checkAndRemoveMatches();
+    while (checkMatches()) {
+      resetColors();
+    }
   }
 
   // Get a random color from the colors array
@@ -94,157 +91,89 @@
         selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
         currentTile.classList.replace(currentTile.classList[1], temp);
 
-        // Check for matches after the swap
-        setTimeout(() => {
-          checkAndRemoveMatches();
-        }, 500);
+        checkAndRemoveMatches();
       }
       selectedTile.style.border = '';
       selectedTile = null;
     }
   }
 
-  // Function to find all matches on the board
-  function findMatches(board) {
-    const matches = new Set();
+  // Check for matches in L, T, and straight line patterns
+  function checkMatches() {
+    const matches = [];
 
-    // Horizontal matches
     for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col <= gridSize - 3; col++) {
-        const index1 = row * gridSize + col;
-        const index2 = index1 + 1;
-        const index3 = index1 + 2;
-        if (
-          board[index1] &&
-          board[index1] === board[index2] &&
-          board[index1] === board[index3]
-        ) {
-          matches.add(index1);
-          matches.add(index2);
-          matches.add(index3);
-        }
-      }
-    }
-
-    // Vertical matches
-    for (let col = 0; col < gridSize; col++) {
-      for (let row = 0; row <= gridSize - 3; row++) {
-        const index1 = row * gridSize + col;
-        const index2 = index1 + gridSize;
-        const index3 = index1 + gridSize * 2;
-        if (
-          board[index1] &&
-          board[index1] === board[index2] &&
-          board[index1] === board[index3]
-        ) {
-          matches.add(index1);
-          matches.add(index2);
-          matches.add(index3);
-        }
-      }
-    }
-
-    // L-shaped matches
-    for (let row = 0; row <= gridSize - 2; row++) {
-      for (let col = 0; col <= gridSize - 2; col++) {
-        const index1 = row * gridSize + col;
-        const index2 = index1 + 1;
-        const index3 = index1 + gridSize;
-        if (
-          board[index1] &&
-          board[index1] === board[index2] &&
-          board[index1] === board[index3]
-        ) {
-          matches.add(index1);
-          matches.add(index2);
-          matches.add(index3);
-        }
-      }
-    }
-
-    // T-shaped matches
-    for (let row = 1; row <= gridSize - 2; row++) {
-      for (let col = 1; col <= gridSize - 2; col++) {
-        const index1 = row * gridSize + col;
-        const index2 = index1 - 1;
-        const index3 = index1 + 1;
-        const index4 = index1 - gridSize;
-        if (
-          board[index1] &&
-          board[index1] === board[index2] &&
-          board[index1] === board[index3] &&
-          board[index1] === board[index4]
-        ) {
-          matches.add(index1);
-          matches.add(index2);
-          matches.add(index3);
-          matches.add(index4);
-        }
-      }
-    }
-
-    return Array.from(matches);
-  }
-
-  // Check and remove matches
-  function checkAndRemoveMatches() {
-    let hasMatches = false;
-
-    // Convert tiles to a flat array for easier processing
-    const board = Array.from(tiles).map(tile => tile.classList[1]);
-
-    // Find all matches
-    const matches = findMatches(board);
-
-    if (matches.length > 0) {
-      hasMatches = true;
-
-      // Add fade-out class to matched tiles
-      matches.forEach(index => {
-        tiles[index].classList.add('fade-out');
-        tiles[index].classList.remove(tiles[index].classList[1]);
-      });
-
-      // Remove tiles after animation
-      setTimeout(() => {
-        matches.forEach(index => {
-          tiles[index].classList.remove('fade-out');
-          tiles[index].classList.add(getRandomColor());
-        });
-        dropTiles();
-        checkAndRemoveMatches(); // Recursive call to check for new matches
-      }, 500);
-    }
-
-    if (!hasMatches) {
-      console.log("No more matches!");
-    }
-  }
-
-  // Drop tiles to fill empty spaces
-  function dropTiles() {
-    for (let col = 0; col < gridSize; col++) {
-      const column = [];
-      for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
         const index = row * gridSize + col;
-        if (!tiles[index].classList[1]) {
-          column.push(index);
+        const color = tiles[index].classList[1];
+
+        // Horizontal matches
+        if (col <= gridSize - 3 && tiles[index].classList[1] === tiles[index + 1].classList[1] && tiles[index].classList[1] === tiles[index + 2].classList[1]) {
+          matches.push(index, index + 1, index + 2);
+        }
+
+        // Vertical matches
+        if (row <= gridSize - 3 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + 2 * gridSize].classList[1]) {
+          matches.push(index, index + gridSize, index + 2 * gridSize);
+        }
+
+        // L-shaped matches
+        if (row <= gridSize - 2 && col <= gridSize - 2 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1] && tiles[index].classList[1] === tiles[index + 1].classList[1]) {
+          matches.push(index, index + gridSize, index + gridSize + 1, index + 1);
+        }
+
+        // T-shaped matches
+        if (row <= gridSize - 2 && col >= 1 && col <= gridSize - 2 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + gridSize - 1].classList[1] && tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1]) {
+          matches.push(index, index + gridSize, index + gridSize - 1, index + gridSize + 1);
         }
       }
+    }
 
-      if (column.length > 0) {
-        for (let i = column.length - 1; i >= 0; i--) {
-          const emptyIndex = column[i];
-          const aboveIndex = emptyIndex - gridSize;
+    return [...new Set(matches)];
+  }
 
-          if (aboveIndex >= 0 && tiles[aboveIndex].classList[1]) {
-            tiles[emptyIndex].classList.add(tiles[aboveIndex].classList[1]);
-            tiles[aboveIndex].classList.remove(tiles[aboveIndex].classList[1]);
-          } else if (aboveIndex < 0) {
-            tiles[emptyIndex].classList.add(getRandomColor());
-          }
+  // Remove matches and let tiles fall down
+  function removeMatches(matches) {
+    matches.forEach(index => {
+      tiles[index].classList.remove(tiles[index].classList[1]);
+      tiles[index].classList.add('empty');
+    });
+
+    for (let col = 0; col < gridSize; col++) {
+      let emptySpaces = [];
+      for (let row = gridSize - 1; row >= 0; row--) {
+        const index = row * gridSize + col;
+        if (tiles[index].classList.contains('empty')) {
+          emptySpaces.push(index);
+        } else if (emptySpaces.length > 0) {
+          const topIndex = emptySpaces.shift();
+          tiles[topIndex].classList.replace('empty', tiles[index].classList[1]);
+          tiles[index].classList.remove(tiles[index].classList[1]);
+          tiles[index].classList.add('empty');
+          emptySpaces.push(index);
         }
       }
+    }
+  }
+
+  // Reset colors of all tiles
+  function resetColors() {
+    tiles.forEach(tile => {
+      if (tile.classList.contains('empty')) {
+        tile.classList.remove('empty');
+        tile.classList.add(getRandomColor());
+      }
+    });
+  }
+
+  // Check and remove matches after each move
+  function checkAndRemoveMatches() {
+    let matches = checkMatches();
+    while (matches.length > 0) {
+      removeMatches(matches);
+      setTimeout(() => {
+        matches = checkMatches();
+      }, 500);
     }
   }
 
