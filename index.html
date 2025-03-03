@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle & Dragons</title>
+  <title>Puzzle Dragons</title>
   <style>
+    /* Стили оставляем без изменений */
     body {
       margin: 0;
       padding: 0;
@@ -12,7 +13,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
+      background: #f0f8ff;
       font-family: 'Helvetica', sans-serif;
     }
 
@@ -40,12 +41,12 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
+    .color1 { background: #ffcccb; }
+    .color2 { background: #b0e0e6; }
+    .color3 { background: #fff8dc; }
+    .color4 { background: #d1e231; }
+    .color5 { background: #deb887; }
+    .color6 { background: #add8e6; }
   </style>
 </head>
 <body>
@@ -59,25 +60,35 @@
   let tiles = [];
   let selectedTile = null;
 
-  // Создание игрового поля
   function createGrid() {
     for (let i = 0; i < gridSize * gridSize; i++) {
       const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
+      tile.classList.add('tile');
       tile.setAttribute('draggable', true);
       tile.addEventListener('click', selectTile);
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
-    removeInitialMatches();
+    fillTiles();
+    while (findMatches().length > 0) {
+      fillTiles();
+    }
   }
 
-  // Получение случайного цвета
+  function fillTiles() {
+    tiles.forEach(tile => {
+      if (!tile.classList.contains('color1') && !tile.classList.contains('color2') &&
+          !tile.classList.contains('color3') && !tile.classList.contains('color4') &&
+          !tile.classList.contains('color5') && !tile.classList.contains('color6')) {
+        tile.classList.add(getRandomColor());
+      }
+    });
+  }
+
   function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Выбор плитки для свапа
   function selectTile(e) {
     if (!selectedTile) {
       selectedTile = e.target;
@@ -86,54 +97,73 @@
       const currentTile = e.target;
       if (selectedTile !== currentTile) {
         swapTiles(selectedTile, currentTile);
-        checkAndRemoveMatches();
+        setTimeout(checkMatches, 500);
       }
       selectedTile.style.border = '';
       selectedTile = null;
     }
   }
 
-  // Свап двух плиток
   function swapTiles(tile1, tile2) {
-    const temp = tile1.classList[1];
-    tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-    tile2.classList.replace(tile2.classList[1], temp);
+    const temp = [...tile1.classList];
+    tile1.className = 'tile';
+    tile1.classList.add(...tile2.classList);
+    tile2.className = 'tile';
+    tile2.classList.add(...temp);
   }
 
-  // Проверка и удаление совпадений
-  function checkAndRemoveMatches() {
+  function checkMatches() {
     const matches = findMatches();
     if (matches.length > 0) {
+      removeMatches(matches);
       setTimeout(() => {
-        removeMatches(matches);
         dropTiles();
         fillEmptySpaces();
-        checkAndRemoveMatches(); // Рекурсивная проверка
-      }, 500); // Задержка для анимации
+        checkMatches();
+      }, 500);
     }
   }
 
-  // Поиск совпадений
   function findMatches() {
     const matches = [];
-    const grid = Array.from(tiles).map(tile => tile.classList[1]);
+    const grid = Array.from(tiles).map(tile => tile.classList[1] || '');
 
-    // Проверка горизонтальных и L/T-образных совпадений
+    // Горизонтальные совпадения
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize - 2; col++) {
         const color = grid[row * gridSize + col];
-        if (color && isLShapeMatch(row, col, color) || isTShapeMatch(row, col, color)) {
-          matches.push(...getMatchCoordinates(row, col, color));
+        if (isHorizontalMatch(row, col, color)) {
+          matches.push(...getHorizontalMatchCoordinates(row, col));
         }
       }
     }
 
-    // Проверка вертикальных совпадений
+    // Вертикальные совпадения
     for (let col = 0; col < gridSize; col++) {
       for (let row = 0; row < gridSize - 2; row++) {
         const color = grid[row * gridSize + col];
-        if (color && isLShapeMatch(row, col, color) || isTShapeMatch(row, col, color)) {
-          matches.push(...getMatchCoordinates(row, col, color));
+        if (isVerticalMatch(row, col, color)) {
+          matches.push(...getVerticalMatchCoordinates(row, col));
+        }
+      }
+    }
+
+    // L-образные совпадения
+    for (let row = 0; row < gridSize - 1; row++) {
+      for (let col = 0; col < gridSize - 2; col++) {
+        const color = grid[row * gridSize + col];
+        if (isLShapeMatch(row, col, color)) {
+          matches.push(...getLShapeMatchCoordinates(row, col));
+        }
+      }
+    }
+
+    // T-образные совпадения
+    for (let row = 0; row < gridSize - 1; row++) {
+      for (let col = 0; col < gridSize - 2; col++) {
+        const color = grid[row * gridSize + col];
+        if (isTShapeMatch(row, col, color)) {
+          matches.push(...getTShapeMatchCoordinates(row, col));
         }
       }
     }
@@ -141,64 +171,89 @@
     return [...new Set(matches)];
   }
 
-  // Проверка L-образных совпадений
+  function isHorizontalMatch(row, col, color) {
+    return (
+      isValidIndex(row, col) &&
+      isValidIndex(row, col + 1) &&
+      isValidIndex(row, col + 2) &&
+      tiles[row * gridSize + col].classList.contains(color) &&
+      tiles[row * gridSize + col + 1].classList.contains(color) &&
+      tiles[row * gridSize + col + 2].classList.contains(color)
+    );
+  }
+
+  function getHorizontalMatchCoordinates(row, col) {
+    return [row * gridSize + col, row * gridSize + col + 1, row * gridSize + col + 2];
+  }
+
+  function isVerticalMatch(row, col, color) {
+    return (
+      isValidIndex(row, col) &&
+      isValidIndex(row + 1, col) &&
+      isValidIndex(row + 2, col) &&
+      tiles[row * gridSize + col].classList.contains(color) &&
+      tiles[(row + 1) * gridSize + col].classList.contains(color) &&
+      tiles[(row + 2) * gridSize + col].classList.contains(color)
+    );
+  }
+
+  function getVerticalMatchCoordinates(row, col) {
+    return [row * gridSize + col, (row + 1) * gridSize + col, (row + 2) * gridSize + col];
+  }
+
   function isLShapeMatch(row, col, color) {
-    const indices = [
-      [row, col],
-      [row, col + 1],
-      [row, col + 2],
-      [row + 1, col + 2]
-    ];
-    return indices.every(([r, c]) => isValidIndex(r, c) && tiles[r * gridSize + c]?.classList.contains(color));
+    return (
+      isHorizontalMatch(row, col, color) &&
+      isValidIndex(row + 1, col + 2) &&
+      tiles[(row + 1) * gridSize + col + 2]?.classList.contains(color)
+    );
   }
 
-  // Проверка T-образных совпадений
+  function getLShapeMatchCoordinates(row, col) {
+    return [
+      row * gridSize + col,
+      row * gridSize + col + 1,
+      row * gridSize + col + 2,
+      (row + 1) * gridSize + col + 2
+    ];
+  }
+
   function isTShapeMatch(row, col, color) {
-    const indices = [
-      [row, col],
-      [row, col + 1],
-      [row, col + 2],
-      [row + 1, col + 1]
+    return (
+      isHorizontalMatch(row, col, color) &&
+      isValidIndex(row + 1, col + 1) &&
+      tiles[(row + 1) * gridSize + col + 1]?.classList.contains(color)
+    );
+  }
+
+  function getTShapeMatchCoordinates(row, col) {
+    return [
+      row * gridSize + col,
+      row * gridSize + col + 1,
+      row * gridSize + col + 2,
+      (row + 1) * gridSize + col + 1
     ];
-    return indices.every(([r, c]) => isValidIndex(r, c) && tiles[r * gridSize + c]?.classList.contains(color));
   }
 
-  // Получение координат совпадений
-  function getMatchCoordinates(row, col, color) {
-    const matches = [];
-    for (let r = row; r < row + 2; r++) {
-      for (let c = col; c < col + 3; c++) {
-        if (isValidIndex(r, c) && tiles[r * gridSize + c]?.classList.contains(color)) {
-          matches.push(r * gridSize + c);
-        }
-      }
-    }
-    return matches;
-  }
-
-  // Проверка индекса на валидность
   function isValidIndex(row, col) {
     return row >= 0 && row < gridSize && col >= 0 && col < gridSize;
   }
 
-  // Удаление совпадений
   function removeMatches(matches) {
     matches.forEach(index => {
-      tiles[index].classList.remove(...tiles[index].classList);
-      tiles[index].classList.add('empty');
+      tiles[index].className = 'tile';
     });
   }
 
-  // Опускание плиток
   function dropTiles() {
     for (let col = 0; col < gridSize; col++) {
       for (let row = gridSize - 1; row >= 0; row--) {
-        const index = row * gridSize + col;
-        if (tiles[index].classList.contains('empty')) {
+        const currentIndex = row * gridSize + col;
+        if (!tiles[currentIndex].classList.length) {
           for (let r = row - 1; r >= 0; r--) {
             const aboveIndex = r * gridSize + col;
-            if (!tiles[aboveIndex].classList.contains('empty')) {
-              swapTiles(tiles[index], tiles[aboveIndex]);
+            if (tiles[aboveIndex].classList.length) {
+              swapTiles(tiles[currentIndex], tiles[aboveIndex]);
               break;
             }
           }
@@ -207,31 +262,14 @@
     }
   }
 
-  // Заполнение пустых клеток
   function fillEmptySpaces() {
-    for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].classList.contains('empty')) {
-        tiles[i].classList.remove('empty');
-        tiles[i].classList.add('tile', getRandomColor());
+    tiles.forEach(tile => {
+      if (!tile.classList.length || tile.classList[0] === 'tile') {
+        tile.classList.add(getRandomColor());
       }
-    }
+    });
   }
 
-  // Удаление начальных совпадений
-  function removeInitialMatches() {
-    let hasMatches = true;
-    while (hasMatches) {
-      const matches = findMatches();
-      if (matches.length === 0) {
-        hasMatches = false;
-      } else {
-        removeMatches(matches);
-        fillEmptySpaces();
-      }
-    }
-  }
-
-  // Инициализация игры
   createGrid();
 </script>
 
