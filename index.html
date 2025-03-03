@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle & Dragons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
     body {
       margin: 0;
@@ -46,6 +46,11 @@
     .color4 { background: #d1e231; } /* Lime green */
     .color5 { background: #deb887; } /* Burlywood */
     .color6 { background: #add8e6; } /* Light blue */
+
+    .fade-out {
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
   </style>
 </head>
 <body>
@@ -69,6 +74,7 @@
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
+    checkAndRemoveMatches();
   }
 
   // Get a random color from the colors array
@@ -88,113 +94,157 @@
         selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
         currentTile.classList.replace(currentTile.classList[1], temp);
 
-        // Check for matches after swapping
-        checkAndRemoveMatches();
+        // Check for matches after the swap
+        setTimeout(() => {
+          checkAndRemoveMatches();
+        }, 500);
       }
       selectedTile.style.border = '';
       selectedTile = null;
     }
   }
 
-  // Function to check and remove matches
+  // Function to find all matches on the board
+  function findMatches(board) {
+    const matches = new Set();
+
+    // Horizontal matches
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col <= gridSize - 3; col++) {
+        const index1 = row * gridSize + col;
+        const index2 = index1 + 1;
+        const index3 = index1 + 2;
+        if (
+          board[index1] &&
+          board[index1] === board[index2] &&
+          board[index1] === board[index3]
+        ) {
+          matches.add(index1);
+          matches.add(index2);
+          matches.add(index3);
+        }
+      }
+    }
+
+    // Vertical matches
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = 0; row <= gridSize - 3; row++) {
+        const index1 = row * gridSize + col;
+        const index2 = index1 + gridSize;
+        const index3 = index1 + gridSize * 2;
+        if (
+          board[index1] &&
+          board[index1] === board[index2] &&
+          board[index1] === board[index3]
+        ) {
+          matches.add(index1);
+          matches.add(index2);
+          matches.add(index3);
+        }
+      }
+    }
+
+    // L-shaped matches
+    for (let row = 0; row <= gridSize - 2; row++) {
+      for (let col = 0; col <= gridSize - 2; col++) {
+        const index1 = row * gridSize + col;
+        const index2 = index1 + 1;
+        const index3 = index1 + gridSize;
+        if (
+          board[index1] &&
+          board[index1] === board[index2] &&
+          board[index1] === board[index3]
+        ) {
+          matches.add(index1);
+          matches.add(index2);
+          matches.add(index3);
+        }
+      }
+    }
+
+    // T-shaped matches
+    for (let row = 1; row <= gridSize - 2; row++) {
+      for (let col = 1; col <= gridSize - 2; col++) {
+        const index1 = row * gridSize + col;
+        const index2 = index1 - 1;
+        const index3 = index1 + 1;
+        const index4 = index1 - gridSize;
+        if (
+          board[index1] &&
+          board[index1] === board[index2] &&
+          board[index1] === board[index3] &&
+          board[index1] === board[index4]
+        ) {
+          matches.add(index1);
+          matches.add(index2);
+          matches.add(index3);
+          matches.add(index4);
+        }
+      }
+    }
+
+    return Array.from(matches);
+  }
+
+  // Check and remove matches
   function checkAndRemoveMatches() {
     let hasMatches = false;
 
-    // Helper function to check for matches in all directions
-    function findMatches() {
-      const matches = [];
-      const grid = Array.from(tiles).map(tile => tile.classList[1]);
+    // Convert tiles to a flat array for easier processing
+    const board = Array.from(tiles).map(tile => tile.classList[1]);
 
-      // Check horizontal matches
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize - 2; col++) {
-          const index = row * gridSize + col;
-          if (
-            grid[index] &&
-            grid[index] === grid[index + 1] &&
-            grid[index] === grid[index + 2]
-          ) {
-            matches.push(index, index + 1, index + 2);
-          }
-        }
-      }
+    // Find all matches
+    const matches = findMatches(board);
 
-      // Check vertical matches
-      for (let col = 0; col < gridSize; col++) {
-        for (let row = 0; row < gridSize - 2; row++) {
-          const index = row * gridSize + col;
-          if (
-            grid[index] &&
-            grid[index] === grid[index + gridSize] &&
-            grid[index] === grid[index + gridSize * 2]
-          ) {
-            matches.push(index, index + gridSize, index + gridSize * 2);
-          }
-        }
-      }
-
-      // Check L-shaped matches
-      for (let row = 0; row < gridSize - 1; row++) {
-        for (let col = 0; col < gridSize - 2; col++) {
-          const index = row * gridSize + col;
-          if (
-            grid[index] &&
-            grid[index] === grid[index + 1] &&
-            grid[index] === grid[index + gridSize]
-          ) {
-            matches.push(index, index + 1, index + gridSize);
-          }
-        }
-      }
-
-      // Check T-shaped matches
-      for (let row = 1; row < gridSize - 1; row++) {
-        for (let col = 1; col < gridSize - 1; col++) {
-          const index = row * gridSize + col;
-          if (
-            grid[index] &&
-            grid[index] === grid[index - 1] &&
-            grid[index] === grid[index + 1] &&
-            grid[index] === grid[index - gridSize]
-          ) {
-            matches.push(index, index - 1, index + 1, index - gridSize);
-          }
-        }
-      }
-
-      return [...new Set(matches)];
-    }
-
-    // Remove matches with animation
-    function removeMatches(matches) {
-      matches.forEach(index => {
-        tiles[index].classList.remove(...tiles[index].classList);
-        tiles[index].classList.add('empty');
-      });
-      setTimeout(() => refillGrid(), 500); // Delay for animation
-    }
-
-    // Refill the grid with new tiles
-    function refillGrid() {
-      tiles.forEach((tile, index) => {
-        if (tile.classList.contains('empty')) {
-          tile.classList.remove('empty');
-          tile.classList.add('tile', getRandomColor());
-        }
-      });
-    }
-
-    // Main loop to check and remove matches
-    while (true) {
-      const matches = findMatches();
-      if (matches.length === 0) break;
+    if (matches.length > 0) {
       hasMatches = true;
-      removeMatches(matches);
-      setTimeout(() => {}, 500); // Add delay between checks
+
+      // Add fade-out class to matched tiles
+      matches.forEach(index => {
+        tiles[index].classList.add('fade-out');
+        tiles[index].classList.remove(tiles[index].classList[1]);
+      });
+
+      // Remove tiles after animation
+      setTimeout(() => {
+        matches.forEach(index => {
+          tiles[index].classList.remove('fade-out');
+          tiles[index].classList.add(getRandomColor());
+        });
+        dropTiles();
+        checkAndRemoveMatches(); // Recursive call to check for new matches
+      }, 500);
     }
 
     if (!hasMatches) {
-      console.log('No matches found.');
+      console.log("No more matches!");
+    }
+  }
+
+  // Drop tiles to fill empty spaces
+  function dropTiles() {
+    for (let col = 0; col < gridSize; col++) {
+      const column = [];
+      for (let row = 0; row < gridSize; row++) {
+        const index = row * gridSize + col;
+        if (!tiles[index].classList[1]) {
+          column.push(index);
+        }
+      }
+
+      if (column.length > 0) {
+        for (let i = column.length - 1; i >= 0; i--) {
+          const emptyIndex = column[i];
+          const aboveIndex = emptyIndex - gridSize;
+
+          if (aboveIndex >= 0 && tiles[aboveIndex].classList[1]) {
+            tiles[emptyIndex].classList.add(tiles[aboveIndex].classList[1]);
+            tiles[aboveIndex].classList.remove(tiles[aboveIndex].classList[1]);
+          } else if (aboveIndex < 0) {
+            tiles[emptyIndex].classList.add(getRandomColor());
+          }
+        }
+      }
     }
   }
 
