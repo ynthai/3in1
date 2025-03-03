@@ -61,16 +61,18 @@
 
   // Create the game grid
   function createGrid() {
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    }
-    while (checkMatches()) {
-      resetColors();
+    while (true) {
+      tiles = [];
+      gameContainer.innerHTML = '';
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        const tile = document.createElement('div');
+        tile.classList.add('tile', getRandomColor());
+        tile.setAttribute('draggable', true);
+        tile.addEventListener('click', selectTile);
+        gameContainer.appendChild(tile);
+        tiles.push(tile);
+      }
+      if (!hasInitialMatches()) break;
     }
   }
 
@@ -86,11 +88,10 @@
       selectedTile.style.border = '2px solid #000';
     } else {
       const currentTile = e.target;
-      if (selectedTile !== currentTile) {
+      if (selectedTile !== currentTile && areAdjacent(selectedTile, currentTile)) {
         const temp = selectedTile.classList[1];
         selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
         currentTile.classList.replace(currentTile.classList[1], temp);
-
         checkAndRemoveMatches();
       }
       selectedTile.style.border = '';
@@ -98,97 +99,152 @@
     }
   }
 
-  // Check for matches in L, T, and straight line patterns
-  function checkMatches() {
+  // Check if two tiles are adjacent
+  function areAdjacent(tile1, tile2) {
+    const index1 = Array.from(tiles).indexOf(tile1);
+    const index2 = Array.from(tiles).indexOf(tile2);
+    if (index1 === -1 || index2 === -1) return false;
+    const row1 = Math.floor(index1 / gridSize);
+    const row2 = Math.floor(index2 / gridSize);
+    const col1 = index1 % gridSize;
+    const col2 = index2 % gridSize;
+    return (row1 === row2 && Math.abs(col1 - col2) === 1) || (col1 === col2 && Math.abs(row1 - row2) === 1);
+  }
+
+  // Check and remove matches
+  async function checkAndRemoveMatches() {
+    while (true) {
+      let matchesFound = false;
+      const matches = findMatches();
+      if (matches.length > 0) {
+        matches.forEach(match => {
+          match.forEach(tile => {
+            tile.classList.remove(...tile.classList);
+            tile.classList.add('tile');
+          });
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        dropTiles();
+        matchesFound = true;
+      }
+      if (!matchesFound) break;
+    }
+  }
+
+  // Find all matches on the board
+  function findMatches() {
     const matches = [];
-
+    // Horizontal matches
     for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const index = row * gridSize + col;
-        const color = tiles[index].classList[1];
-
-        if (!color || color === 'empty') continue;
-
-        // Horizontal matches
-        if (col <= gridSize - 3 && 
-            tiles[index].classList[1] === tiles[index + 1].classList[1] &&
-            tiles[index].classList[1] === tiles[index + 2].classList[1]) {
-          matches.push(index, index + 1, index + 2);
-        }
-
-        // Vertical matches
-        if (row <= gridSize - 3 && 
-            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
-            tiles[index].classList[1] === tiles[index + 2 * gridSize].classList[1]) {
-          matches.push(index, index + gridSize, index + 2 * gridSize);
-        }
-
-        // L-shaped matches
-        if (row <= gridSize - 2 && col <= gridSize - 2 && 
-            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
-            tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1] &&
-            tiles[index].classList[1] === tiles[index + 1].classList[1]) {
-          matches.push(index, index + gridSize, index + gridSize + 1, index + 1);
-        }
-
-        // T-shaped matches
-        if (row <= gridSize - 2 && col >= 1 && col <= gridSize - 2 && 
-            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
-            tiles[index].classList[1] === tiles[index + gridSize - 1].classList[1] &&
-            tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1]) {
-          matches.push(index, index + gridSize, index + gridSize - 1, index + gridSize + 1);
+      for (let col = 0; col <= gridSize - 3; col++) {
+        const start = row * gridSize + col;
+        const group = [tiles[start], tiles[start + 1], tiles[start + 2]];
+        if (group.every(tile => tile.classList.contains(group[0].classList[1]))) {
+          matches.push(group);
+          checkLShape(start, group[0].classList[1], matches);
+          checkTShape(start, group[0].classList[1], matches);
         }
       }
     }
-
-    return [...new Set(matches)];
+    // Vertical matches
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = 0; row <= gridSize - 3; row++) {
+        const start = row * gridSize + col;
+        const group = [tiles[start], tiles[start + gridSize], tiles[start + gridSize * 2]];
+        if (group.every(tile => tile.classList.contains(group[0].classList[1]))) {
+          matches.push(group);
+          checkLShapeVertical(start, group[0].classList[1], matches);
+          checkTShapeVertical(start, group[0].classList[1], matches);
+        }
+      }
+    }
+    return matches;
   }
 
-  // Remove matches and let tiles fall down
-  function removeMatches(matches) {
-    matches.forEach(index => {
-      tiles[index].classList.remove(tiles[index].classList[1]);
-      tiles[index].classList.add('empty');
+  // Check L-shaped matches
+  function checkLShape(start, color, matches) {
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1]
+    ];
+    directions.forEach(([dx, dy]) => {
+      const cornerIndex = start + dx + dy * gridSize;
+      if (cornerIndex >= 0 && cornerIndex < tiles.length && tiles[cornerIndex].classList.contains(color)) {
+        matches.push([tiles[start], tiles[start + 1], tiles[start + 2], tiles[cornerIndex]]);
+      }
     });
+  }
 
+  // Check T-shaped matches
+  function checkTShape(start, color, matches) {
+    const middleIndex = start + 1;
+    const topIndex = middleIndex - gridSize;
+    const bottomIndex = middleIndex + gridSize;
+    const leftIndex = middleIndex - 1;
+    const rightIndex = middleIndex + 1;
+    if (topIndex >= 0 && bottomIndex < tiles.length && leftIndex >= 0 && rightIndex < tiles.length &&
+        tiles[topIndex].classList.contains(color) && tiles[bottomIndex].classList.contains(color) &&
+        tiles[leftIndex].classList.contains(color) && tiles[rightIndex].classList.contains(color)) {
+      matches.push([tiles[middleIndex], tiles[topIndex], tiles[bottomIndex], tiles[leftIndex], tiles[rightIndex]]);
+    }
+  }
+
+  // Check L-shaped matches vertically
+  function checkLShapeVertical(start, color, matches) {
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1]
+    ];
+    directions.forEach(([dx, dy]) => {
+      const cornerIndex = start + dx + dy * gridSize;
+      if (cornerIndex >= 0 && cornerIndex < tiles.length && tiles[cornerIndex].classList.contains(color)) {
+        matches.push([tiles[start], tiles[start + gridSize], tiles[start + gridSize * 2], tiles[cornerIndex]]);
+      }
+    });
+  }
+
+  // Check T-shaped matches vertically
+  function checkTShapeVertical(start, color, matches) {
+    const middleIndex = start + gridSize;
+    const topIndex = middleIndex - gridSize;
+    const bottomIndex = middleIndex + gridSize;
+    const leftIndex = middleIndex - 1;
+    const rightIndex = middleIndex + 1;
+    if (topIndex >= 0 && bottomIndex < tiles.length && leftIndex >= 0 && rightIndex < tiles.length &&
+        tiles[topIndex].classList.contains(color) && tiles[bottomIndex].classList.contains(color) &&
+        tiles[leftIndex].classList.contains(color) && tiles[rightIndex].classList.contains(color)) {
+      matches.push([tiles[middleIndex], tiles[topIndex], tiles[bottomIndex], tiles[leftIndex], tiles[rightIndex]]);
+    }
+  }
+
+  // Drop tiles to fill empty spaces
+  function dropTiles() {
     for (let col = 0; col < gridSize; col++) {
-      let emptySpaces = [];
+      let emptySpaces = 0;
       for (let row = gridSize - 1; row >= 0; row--) {
         const index = row * gridSize + col;
-        if (tiles[index].classList.contains('empty')) {
-          emptySpaces.push(index);
-        } else if (emptySpaces.length > 0) {
-          const topIndex = emptySpaces.shift();
-          tiles[topIndex].classList.replace('empty', tiles[index].classList[1]);
-          tiles[index].classList.remove(tiles[index].classList[1]);
-          tiles[index].classList.add('empty');
-          emptySpaces.push(index);
+        if (tiles[index].classList.length === 1) {
+          emptySpaces++;
+        } else if (emptySpaces > 0) {
+          tiles[index].classList.replace(tiles[index].classList[1], getRandomColor());
+          tiles[index + emptySpaces * gridSize].classList.remove(...tiles[index + emptySpaces * gridSize].classList);
+          tiles[index + emptySpaces * gridSize].classList.add('tile');
         }
       }
-    }
-  }
-
-  // Reset colors of all tiles
-  function resetColors() {
-    tiles.forEach(tile => {
-      if (tile.classList.contains('empty')) {
-        tile.classList.remove('empty');
-        tile.classList.add(getRandomColor());
+      for (let i = 0; i < emptySpaces; i++) {
+        tiles[i * gridSize + col].classList.remove(...tiles[i * gridSize + col].classList);
+        tiles[i * gridSize + col].classList.add('tile', getRandomColor());
       }
-    });
+    }
   }
 
-  // Check and remove matches after each move
-  function checkAndRemoveMatches() {
-    let matches = checkMatches();
-    if (matches.length > 0) {
-      removeMatches(matches);
-      setTimeout(() => {
-        checkAndRemoveMatches(); // Recursive call with delay
-      }, 500);
-    } else {
-      resetColors(); // Fill empty spaces with new tiles
-    }
+  // Check for initial matches
+  function hasInitialMatches() {
+    return findMatches().length > 0;
   }
 
   // Initialize the game
