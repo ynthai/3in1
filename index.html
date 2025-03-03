@@ -107,23 +107,35 @@
         const index = row * gridSize + col;
         const color = tiles[index].classList[1];
 
+        if (!color || color === 'empty') continue;
+
         // Horizontal matches
-        if (col <= gridSize - 3 && tiles[index].classList[1] === tiles[index + 1].classList[1] && tiles[index].classList[1] === tiles[index + 2].classList[1]) {
+        if (col <= gridSize - 3 && 
+            tiles[index].classList[1] === tiles[index + 1].classList[1] &&
+            tiles[index].classList[1] === tiles[index + 2].classList[1]) {
           matches.push(index, index + 1, index + 2);
         }
 
         // Vertical matches
-        if (row <= gridSize - 3 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + 2 * gridSize].classList[1]) {
+        if (row <= gridSize - 3 && 
+            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
+            tiles[index].classList[1] === tiles[index + 2 * gridSize].classList[1]) {
           matches.push(index, index + gridSize, index + 2 * gridSize);
         }
 
         // L-shaped matches
-        if (row <= gridSize - 2 && col <= gridSize - 2 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1] && tiles[index].classList[1] === tiles[index + 1].classList[1]) {
+        if (row <= gridSize - 2 && col <= gridSize - 2 && 
+            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
+            tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1] &&
+            tiles[index].classList[1] === tiles[index + 1].classList[1]) {
           matches.push(index, index + gridSize, index + gridSize + 1, index + 1);
         }
 
         // T-shaped matches
-        if (row <= gridSize - 2 && col >= 1 && col <= gridSize - 2 && tiles[index].classList[1] === tiles[index + gridSize].classList[1] && tiles[index].classList[1] === tiles[index + gridSize - 1].classList[1] && tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1]) {
+        if (row <= gridSize - 2 && col >= 1 && col <= gridSize - 2 && 
+            tiles[index].classList[1] === tiles[index + gridSize].classList[1] &&
+            tiles[index].classList[1] === tiles[index + gridSize - 1].classList[1] &&
+            tiles[index].classList[1] === tiles[index + gridSize + 1].classList[1]) {
           matches.push(index, index + gridSize, index + gridSize - 1, index + gridSize + 1);
         }
       }
@@ -169,11 +181,13 @@
   // Check and remove matches after each move
   function checkAndRemoveMatches() {
     let matches = checkMatches();
-    while (matches.length > 0) {
+    if (matches.length > 0) {
       removeMatches(matches);
       setTimeout(() => {
-        matches = checkMatches();
+        checkAndRemoveMatches(); // Recursive call with delay
       }, 500);
+    } else {
+      resetColors(); // Fill empty spaces with new tiles
     }
   }
 
