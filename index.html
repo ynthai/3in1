@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minimalist Puzzle Game</title>
   <style>
-    /* [Стили оставлены без изменений] */
     body {
       margin: 0;
       padding: 0;
@@ -13,7 +12,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: #f0f8ff; 
+      background: #f0f8ff; /* Minimally soft blue */
       font-family: 'Helvetica', sans-serif;
     }
 
@@ -41,12 +40,12 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .color1 { background: #ffcccb; } 
-    .color2 { background: #b0e0e6; } 
-    .color3 { background: #fff8dc; } 
-    .color4 { background: #d1e231; } 
-    .color5 { background: #deb887; } 
-    .color6 { background: #add8e6; } 
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
@@ -60,6 +59,7 @@
   let tiles = [];
   let selectedTile = null;
 
+  // Create the game grid
   function createGrid() {
     while (true) {
       tiles = [];
@@ -76,11 +76,12 @@
     }
   }
 
+  // Get a random color from the colors array
   function getRandomColor() {
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    return color;
+    return colors[Math.floor(Math.random() * colors.length)];
   }
 
+  // Select a tile to swap
   function selectTile(e) {
     if (!selectedTile) {
       selectedTile = e.target;
@@ -105,6 +106,7 @@
     }
   }
 
+  // Check if two tiles are neighbors
   function areNeighbors(tile1, tile2) {
     const index1 = tiles.indexOf(tile1);
     const index2 = tiles.indexOf(tile2);
@@ -115,12 +117,14 @@
     return (Math.abs(row1 - row2) === 1 && col1 === col2) || (row1 === row2 && Math.abs(col1 - col2) === 1);
   }
 
+  // Swap two tiles
   function swapTiles(tile1, tile2) {
     const temp = tile1.classList[1];
     tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
     tile2.classList.replace(tile2.classList[1], temp);
   }
 
+  // Check for initial matches during grid creation
   function hasInitialMatches() {
     const grid = Array.from(tiles).map(tile => tile.classList[1]);
     for (let row = 0; row < gridSize; row++) {
@@ -136,40 +140,51 @@
     return false;
   }
 
+  // Find all matches on the board
   function findMatches() {
-    const matches = [];
+    const matches = new Set();
     const grid = Array.from(tiles).map(tile => tile.classList[1]);
 
+    // Horizontal matches
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize - 2; col++) {
         if (isHorizontalMatch(row, col, grid[row * gridSize + col])) {
-          matches.push(...getHorizontalMatchCoordinates(row, col));
+          getHorizontalMatchCoordinates(row, col).forEach(index => matches.add(index));
         }
       }
     }
 
+    // Vertical matches
     for (let col = 0; col < gridSize; col++) {
       for (let row = 0; row < gridSize - 2; row++) {
         if (isVerticalMatch(row, col, grid[row * gridSize + col])) {
-          matches.push(...getVerticalMatchCoordinates(row, col));
+          getVerticalMatchCoordinates(row, col).forEach(index => matches.add(index));
         }
       }
     }
 
+    // L-shape matches
     for (let row = 0; row < gridSize - 1; row++) {
       for (let col = 0; col < gridSize - 2; col++) {
         if (isLShapeMatch(row, col, grid[row * gridSize + col])) {
-          matches.push(...getLShapeMatchCoordinates(row, col));
-        }
-        if (isTShapeMatch(row, col, grid[row * gridSize + col])) {
-          matches.push(...getTShapeMatchCoordinates(row, col));
+          getLShapeMatchCoordinates(row, col).forEach(index => matches.add(index));
         }
       }
     }
 
-    return [...new Set(matches)];
+    // T-shape matches
+    for (let row = 0; row < gridSize - 1; row++) {
+      for (let col = 0; col < gridSize - 2; col++) {
+        if (isTShapeMatch(row, col, grid[row * gridSize + col])) {
+          getTShapeMatchCoordinates(row, col).forEach(index => matches.add(index));
+        }
+      }
+    }
+
+    return [...matches];
   }
 
+  // Check for horizontal matches
   function isHorizontalMatch(row, col, color) {
     return (
       isValidIndex(row, col) &&
@@ -181,10 +196,12 @@
     );
   }
 
+  // Get horizontal match coordinates
   function getHorizontalMatchCoordinates(row, col) {
     return [row * gridSize + col, row * gridSize + col + 1, row * gridSize + col + 2];
   }
 
+  // Check for vertical matches
   function isVerticalMatch(row, col, color) {
     return (
       isValidIndex(row, col) &&
@@ -196,10 +213,12 @@
     );
   }
 
+  // Get vertical match coordinates
   function getVerticalMatchCoordinates(row, col) {
     return [row * gridSize + col, (row + 1) * gridSize + col, (row + 2) * gridSize + col];
   }
 
+  // Check for L-shape matches
   function isLShapeMatch(row, col, color) {
     return (
       isHorizontalMatch(row, col, color) &&
@@ -208,6 +227,7 @@
     );
   }
 
+  // Get L-shape match coordinates
   function getLShapeMatchCoordinates(row, col) {
     return [
       row * gridSize + col,
@@ -217,6 +237,7 @@
     ];
   }
 
+  // Check for T-shape matches
   function isTShapeMatch(row, col, color) {
     return (
       isHorizontalMatch(row, col, color) &&
@@ -225,6 +246,7 @@
     );
   }
 
+  // Get T-shape match coordinates
   function getTShapeMatchCoordinates(row, col) {
     return [
       row * gridSize + col,
@@ -234,21 +256,25 @@
     ];
   }
 
+  // Check if index is valid
   function isValidIndex(row, col) {
     return row >= 0 && row < gridSize && col >= 0 && col < gridSize;
   }
 
+  // Remove matches and animate removal
   function removeMatches(matches) {
     matches.forEach(index => {
       tiles[index].classList.remove(...tiles[index].classList);
       tiles[index].classList.add('empty');
     });
+
     setTimeout(() => {
       fillEmptySpaces();
       checkForMatches();
     }, 500);
   }
 
+  // Fill empty spaces with tiles from above
   function fillEmptySpaces() {
     for (let col = 0; col < gridSize; col++) {
       for (let row = gridSize - 1; row >= 0; row--) {
@@ -270,6 +296,7 @@
     }
   }
 
+  // Continuously check for matches after removal
   function checkForMatches() {
     const matches = findMatches();
     if (matches.length > 0) {
@@ -277,6 +304,7 @@
     }
   }
 
+  // Initialize the game
   createGrid();
 </script>
 
