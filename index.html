@@ -68,46 +68,47 @@ let selectedTile = null;
 
 // Преобразование в 2D массив
 function to2D(arr) {
-  return arr.reduce((result, item, index) => {
-    const row = Math.floor(index / gridSize);
-    if (!result[row]) result[row] = [];
-    result[row].push(item);
-    return result;
-  }, []);
+  return Array.from({length: gridSize}, (_, i) => 
+    arr.slice(i * gridSize, (i + 1) * gridSize)
+  );
 }
 
 // Проверка L/T-образных совпадений
 function findMatches(matrix) {
   const matches = new Set();
-  
+
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const current = matrix[row][col];
       if (!current) continue;
-      
-      // Проверка T-образных
-      if (row > 1 && col > 0 && col < gridSize - 1) {
-        const top = matrix[row-1][col];
-        const left = matrix[row][col-1];
-        const right = matrix[row][col+1];
-        if (current === top && current === left && current === right) {
+
+      // Проверка T-образных (центральная плитка с 3 соседями)
+      if (row > 0 && row < gridSize - 1 && col > 0 && col < gridSize - 1) {
+        if (
+          current === matrix[row - 1][col] &&
+          current === matrix[row + 1][col] &&
+          current === matrix[row][col - 1] &&
+          current === matrix[row][col + 1]
+        ) {
           matches.add(matrix[row-1][col]);
+          matches.add(matrix[row+1][col]);
+          matches.add(matrix[row][col-1]);
+          matches.add(matrix[row][col+1]);
           matches.add(current);
-          matches.add(left);
-          matches.add(right);
         }
       }
-      
-      // Проверка L-образных
-      if (row > 0 && col > 0) {
-        const up = matrix[row-1][col];
-        const left = matrix[row][col-1];
-        const diag = matrix[row-1][col-1];
-        if (current === up && current === left && current === diag) {
+
+      // Проверка L-образных (3 плитки в углу)
+      if (row < gridSize - 1 && col < gridSize - 1) {
+        if (
+          current === matrix[row][col + 1] &&
+          current === matrix[row + 1][col] &&
+          current === matrix[row + 1][col + 1]
+        ) {
           matches.add(current);
-          matches.add(up);
-          matches.add(left);
-          matches.add(diag);
+          matches.add(matrix[row][col+1]);
+          matches.add(matrix[row+1][col]);
+          matches.add(matrix[row+1][col+1]);
         }
       }
     }
@@ -121,7 +122,7 @@ function removeTiles(matchedTiles) {
   matchedTiles.forEach(tile => {
     tile.classList.add('removed');
   });
-  
+
   setTimeout(() => {
     matchedTiles.forEach(tile => {
       const index = tiles.indexOf(tile);
@@ -134,13 +135,11 @@ function removeTiles(matchedTiles) {
 
 // Проверка и заполнение
 async function checkAndFill() {
-  let matrix = to2D(tiles);
-  let matches = findMatches(matrix);
+  const matrix = to2D(tiles);
+  const matches = findMatches(matrix);
   
   if (matches.length >= 3) {
     removeTiles(matches);
-    await new Promise(r => setTimeout(r, 600));
-    checkAndFill();
   } else {
     // Сдвиг плиток вниз
     for (let col = 0; col < gridSize; col++) {
@@ -158,7 +157,10 @@ async function checkAndFill() {
         }
       }
     }
-    
+
+    // Обновление tiles после сдвига
+    tiles = matrix.flat();
+
     // Заполнение верхних пустот
     for (let col = 0; col < gridSize; col++) {
       for (let row = 0; row < gridSize; row++) {
@@ -168,15 +170,14 @@ async function checkAndFill() {
           newTile.addEventListener('click', selectTile);
           matrix[row][col] = newTile;
           gameContainer.appendChild(newTile);
-          tiles = Array.from(gameContainer.children);
         }
       }
     }
-    
-    // Рекурсивная проверка
-    if (findMatches(to2D(tiles)).length > 0) {
-      checkAndFill();
-    }
+
+    // Обновляем tiles и проверяем снова
+    tiles = Array.from(gameContainer.children);
+    await new Promise(r => setTimeout(r, 600));
+    checkAndFill();
   }
 }
 
@@ -222,17 +223,9 @@ function createGrid() {
 
 // Выбор плитки
 function selectTile(e) {
-  if (selectedTile === e.target) return;
-  
-  if (!selectedTile) {
-    selectedTile = e.target;
-    selectedTile.style.border = '2px solid #000';
-  } else {
-    const currentTile = e.target;
-    
-    // Проверка на соседние плитки
+  if (selectedTile && e.target !== selectedTile) {
     const selectedPos = Array.from(gameContainer.children).indexOf(selectedTile);
-    const currentPos = Array.from(gameContainer.children).indexOf(currentTile);
+    const currentPos = Array.from(gameContainer.children).indexOf(e.target);
     
     const dx = Math.abs(selectedPos % gridSize - currentPos % gridSize);
     const dy = Math.abs(Math.floor(selectedPos / gridSize) - Math.floor(currentPos / gridSize));
@@ -240,24 +233,25 @@ function selectTile(e) {
     if (dx + dy === 1) {
       // Меняем классы
       const temp = selectedTile.classList[1];
-      selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-      currentTile.classList.replace(currentTile.classList[1], temp);
+      selectedTile.classList.replace(selectedTile.classList[1], e.target.classList[1]);
+      e.target.classList.replace(e.target.classList[1], temp);
       
-      // Проверяем совпадения
+      // Обновляем tiles и проверяем совпадения
+      tiles = Array.from(gameContainer.children);
       const matrix = to2D(tiles);
       const newMatches = findMatches(matrix);
       
       if (newMatches.length >= 3) {
         removeTiles(newMatches);
       } else {
-        // Отменяем ход, если нет совпадений
-        selectedTile.classList.replace(currentTile.classList[1], temp);
-        currentTile.classList.replace(temp, currentTile.classList[1]);
+        // Отмена хода
+        selectedTile.classList.replace(e.target.classList[1], temp);
+        e.target.classList.replace(temp, e.target.classList[1]);
       }
     }
-    
-    selectedTile.style.border = '';
     selectedTile = null;
+  } else {
+    selectedTile = e.target;
   }
 }
 
