@@ -32,8 +32,17 @@
       height: 50px;
       border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.5s ease-out;
-      position: relative;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out, opacity 0.5s ease-out;
+    }
+
+    /* Новые анимации */
+    @keyframes fadeOut {
+      100% { opacity: 0; transform: scale(0.5); }
+    }
+
+    @keyframes fallDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
     }
 
     .tile:hover {
@@ -47,244 +56,231 @@
     .color4 { background: #d1e231; }
     .color5 { background: #deb887; }
     .color6 { background: #add8e6; }
-
-    /* Анимация удаления */
-    .tile.removing {
-      animation: removeTile 0.5s forwards;
-    }
-    @keyframes removeTile {
-      to {
-        transform: scale(0.1);
-        opacity: 0;
-      }
-    }
-
-    /* Анимация появления */
-    .tile.falling {
-      animation: fallTile 0.5s ease-out forwards;
-    }
-    @keyframes fallTile {
-      from {
-        transform: translateY(-100%);
-      }
-      to {
-        transform: translateY(0);
-      }
-    }
-
-    /* Анимация новых плиток */
-    .tile.new {
-      animation: appearTile 0.5s ease-out forwards;
-    }
-    @keyframes appearTile {
-      from {
-        transform: translateY(-100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
   </style>
 </head>
 <body>
+
 <div class="game-container" id="game-container"></div>
 
 <script>
-  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
-  const gridSize = 6;
-  const gameContainer = document.getElementById('game-container');
-  let tiles = [];
-  let grid = Array.from({ length: gridSize }, () => Array(gridSize));
-  let selectedTile = null;
-  let isProcessing = false;
+const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+const gridSize = 6;
+const gameContainer = document.getElementById('game-container');
+let tiles = [];
+let selectedTile = null;
 
-  function createGrid() {
-    tiles = Array.from({ length: gridSize * gridSize }, (_, i) => {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.style.gridColumn = (i % gridSize) + 1;
-      tile.style.gridRow = Math.floor(i / gridSize) + 1;
-      tile.setAttribute('data-row', Math.floor(i / gridSize));
-      tile.setAttribute('data-col', i % gridSize);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      return tile;
-    });
+// Добавленные переменные
+let isProcessing = false;
+const delay = 500; // 0.5 секунды
 
-    // Перестраиваем сетку в двумерный массив
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const index = row * gridSize + col;
-        grid[row][col] = tiles[index];
-      }
-    }
+// Переработанная функция создания сетки
+function createGrid() {
+  gameContainer.innerHTML = '';
+  tiles = [];
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const tile = document.createElement('div');
+    tile.classList.add('tile', getRandomColor());
+    tile.setAttribute('draggable', true);
+    tile.addEventListener('click', selectTile);
+    gameContainer.appendChild(tile);
+    tiles.push(tile);
   }
+}
 
-  function getRandomColor() {
-    return colors[Math.floor(Math.random() * colors.length)];
-  }
+// Функция проверки совпадений
+function checkMatches() {
+  const matches = [];
+  const grid = tiles.map(tile => tile.classList[1]);
 
-  function selectTile(e) {
-    if (isProcessing) return;
-    const currentTile = e.target;
-    
-    if (!selectedTile) {
-      selectedTile = currentTile;
-      selectedTile.style.border = '2px solid #000';
-    } else {
-      const row1 = parseInt(selectedTile.getAttribute('data-row'));
-      const col1 = parseInt(selectedTile.getAttribute('data-col'));
-      const row2 = parseInt(currentTile.getAttribute('data-row'));
-      const col2 = parseInt(currentTile.getAttribute('data-col'));
-
-      // Проверяем, что плитки соседние
-      if (
-        (Math.abs(row1 - row2) === 1 && col1 === col2) || 
-        (Math.abs(col1 - col2) === 1 && row1 === row2)
-      ) {
-        // Обмен классами
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
-
-        // Обновляем данные
-        grid[row1][col1] = currentTile;
-        grid[row2][col2] = selectedTile;
-
-        checkMatches();
-      }
-
-      selectedTile.style.border = '';
-      selectedTile = null;
-    }
-  }
-
-  async function checkMatches() {
-    if (isProcessing) return;
-    isProcessing = true;
-
-    const matches = findMatches();
-    
-    if (matches.size === 0) {
-      isProcessing = false;
-      return;
-    }
-
-    // Удаляем совпадения
-    await removeMatches(matches);
-    
-    // Падение плиток
-    await fallTiles();
-
-    // Добавляем новые плитки
-    addNewTiles();
-
-    isProcessing = false;
-  }
-
-  function findMatches() {
-    const matches = new Set();
-    
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const currentColor = grid[row][col].classList[1];
-        
-        // Проверяем горизонтальные
-        let horizontalCount = 1;
-        for (let c = col + 1; c < gridSize; c++) {
-          if (grid[row][c].classList[1] === currentColor) horizontalCount++;
-          else break;
-        }
-        if (horizontalCount >= 3) {
-          for (let c = 0; c < horizontalCount; c++) {
-            matches.add(grid[row][col + c]);
-          }
-        }
-
-        // Проверяем вертикальные
-        let verticalCount = 1;
-        for (let r = row + 1; r < gridSize; r++) {
-          if (grid[r][col].classList[1] === currentColor) verticalCount++;
-          else break;
-        }
-        if (verticalCount >= 3) {
-          for (let r = 0; r < verticalCount; r++) {
-            matches.add(grid[row + r][col]);
-          }
-        }
-      }
-    }
-
-    return matches;
-  }
-
-  async function removeMatches(matches) {
-    matches.forEach(tile => tile.classList.add('removing'));
-    await new Promise(resolve => setTimeout(resolve, 500));
-    matches.forEach(tile => {
-      tile.remove();
-      const row = parseInt(tile.getAttribute('data-row'));
-      const col = parseInt(tile.getAttribute('data-col'));
-      grid[row][col] = null;
-    });
-  }
-
-  async function fallTiles() {
+  // Горизонтальные линии
+  for (let row = 0; row < gridSize; row++) {
+    let current = null;
+    let count = 0;
+    let start = row * gridSize;
     for (let col = 0; col < gridSize; col++) {
-      for (let row = gridSize - 1; row >= 0; row--) {
-        if (!grid[row][col]) {
-          for (let r = row - 1; r >= 0; r--) {
-            if (grid[r][col]) {
-              // Перемещаем плитку вниз
-              const movingTile = grid[r][col];
-              movingTile.style.gridColumn = col + 1;
-              movingTile.style.gridRow = row + 1;
-              movingTile.setAttribute('data-row', row);
-              movingTile.classList.add('falling');
-
-              // Обновляем данные
-              grid[row][col] = movingTile;
-              grid[r][col] = null;
-
-              await new Promise(resolve => setTimeout(resolve, 500));
-              movingTile.classList.remove('falling');
-              break;
-            }
-          }
-        }
+      const index = start + col;
+      if (grid[index] === current) count++;
+      else {
+        if (count >= 2) matches.push({ type: 'horizontal', start: start + col - count - 1, count: count + 1 });
+        current = grid[index];
+        count = 1;
+      }
+      if (col === gridSize - 1 && count >= 2) {
+        matches.push({ type: 'horizontal', start: start + col - count, count });
       }
     }
   }
 
-  function addNewTiles() {
+  // Вертикальные линии
+  for (let col = 0; col < gridSize; col++) {
+    let current = null;
+    let count = 0;
     for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        if (!grid[row][col]) {
-          const newTile = document.createElement('div');
-          newTile.classList.add('tile', getRandomColor());
-          newTile.style.gridColumn = col + 1;
-          newTile.style.gridRow = row + 1;
-          newTile.style.transform = 'translateY(-100%)';
-          newTile.setAttribute('data-row', row);
-          newTile.setAttribute('data-col', col);
-          newTile.addEventListener('click', selectTile);
-          gameContainer.appendChild(newTile);
-
-          // Анимация появления
-          setTimeout(() => {
-            newTile.classList.add('new');
-            newTile.style.transform = '';
-          }, 10);
-
-          grid[row][col] = newTile;
-        }
+      const index = row * gridSize + col;
+      if (grid[index] === current) count++;
+      else {
+        if (count >= 2) matches.push({ type: 'vertical', start: (row - count - 1) * gridSize + col, count: count + 1 });
+        current = grid[index];
+        count = 1;
+      }
+      if (row === gridSize - 1 && count >= 2) {
+        matches.push({ type: 'vertical', start: (row - count) * gridSize + col, count });
       }
     }
   }
 
-  createGrid();
+  return matches;
+}
+
+// Функция удаления плиток
+async function removeMatches(matches) {
+  const removed = new Set();
+  matches.forEach(match => {
+    if (match.type === 'horizontal') {
+      for (let i = 0; i < match.count; i++) {
+        removed.add(match.start + i);
+      }
+    } else {
+      for (let i = 0; i < match.count; i++) {
+        removed.add(match.start + i * gridSize);
+      }
+    }
+  });
+
+  if (removed.size === 0) return;
+
+  // Анимация удаления
+  removed.forEach(index => {
+    tiles[index].style.animation = 'fadeOut 0.5s forwards';
+  });
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  removed.forEach(index => {
+    tiles[index].classList.remove(tiles[index].classList[1]);
+    tiles[index].classList.add('empty');
+  });
+  
+  return Array.from(removed);
+}
+
+// Функция падения плиток
+async function fallTiles(removedIndices) {
+  // Падение плиток по столбцам
+  const columns = Array.from({ length: gridSize }, () => []);
+  tiles.forEach((tile, index) => {
+    const col = index % gridSize;
+    if (!tile.classList.contains('empty')) {
+      columns[col].push(tile);
+    }
+  });
+
+  tiles.forEach(tile => tile.style.transform = '');
+
+  // Перемещение плиток вниз
+  for (let col = 0; col < gridSize; col++) {
+    const emptyCount = gridSize - columns[col].length;
+    columns[col].forEach((tile, i) => {
+      const targetRow = emptyCount + i;
+      const from = tile.offsetTop;
+      const to = targetRow * 55 + 10; // учет пробелов между плитками
+      tile.style.transition = 'all 0.5s ease-in-out';
+      tile.style.transform = `translateY(${to - from}px)`;
+    });
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Обновление позиций плиток
+  tiles = [];
+  for (let col = 0; col < gridSize; col++) {
+    const emptyCount = gridSize - columns[col].length;
+    for (let row = 0; row < gridSize; row++) {
+      const index = row * gridSize + col;
+      if (row < emptyCount) {
+        tiles[index] = document.createElement('div');
+        tiles[index].classList.add('tile', 'empty');
+      } else {
+        tiles[index] = columns[col][row - emptyCount];
+      }
+      gameContainer.appendChild(tiles[index]);
+    }
+  }
+
+  // Удаление пустых плиток
+  tiles = tiles.filter(tile => !tile.classList.contains('empty'));
+}
+
+// Функция генерации новых плиток
+async function generateNewTiles() {
+  const newTiles = [];
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const tile = tiles[i];
+    if (tile.classList.contains('empty')) {
+      const newTile = document.createElement('div');
+      newTile.classList.add('tile', getRandomColor());
+      newTile.style.animation = 'fallDown 0.5s forwards';
+      newTiles.push(newTile);
+    } else {
+      newTiles.push(tile);
+    }
+  }
+  tiles = newTiles;
+  gameContainer.innerHTML = '';
+  tiles.forEach(tile => gameContainer.appendChild(tile));
+}
+
+// Основная функция обработки хода
+async function processMove() {
+  if (isProcessing) return;
+  isProcessing = true;
+
+  let hasMatches = true;
+  while (hasMatches) {
+    const matches = checkMatches();
+    if (matches.length === 0) {
+      hasMatches = false;
+      break;
+    }
+    
+    const removedIndices = await removeMatches(matches);
+    await fallTiles(removedIndices);
+    await generateNewTiles();
+    
+    // Проверка на возможные ходы
+    const nextMatches = checkMatches();
+    if (nextMatches.length === 0) {
+      hasMatches = false;
+    }
+  }
+
+  isProcessing = false;
+}
+
+// Переработанная функция выбора плитки
+function selectTile(e) {
+  if (isProcessing) return;
+  const currentTile = e.target;
+  if (selectedTile && selectedTile !== currentTile) {
+    // Обмен плиток
+    const temp = selectedTile.classList[1];
+    selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+    currentTile.classList.replace(currentTile.classList[1], temp);
+    
+    selectedTile.style.border = '';
+    selectedTile = null;
+    
+    // Обработка хода
+    processMove();
+  } else {
+    selectedTile = selectedTile === currentTile ? null : currentTile;
+    selectedTile.style.border = selectedTile ? '2px solid #000' : '';
+  }
+}
+
+// Инициализация
+createGrid();
 </script>
+
 </body>
 </html>
