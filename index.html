@@ -58,42 +58,156 @@
   const gameContainer = document.getElementById('game-container');
   let tiles = [];
   let selectedTile = null;
+  let isChecking = false;
 
   // Create the game grid
   function createGrid() {
     for (let i = 0; i < gridSize * gridSize; i++) {
       const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
+      tile.classList.add('tile');
       tile.setAttribute('draggable', true);
       tile.addEventListener('click', selectTile);
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
+    generateValidGrid();
   }
 
-  // Get a random color from the colors array
+  function generateValidGrid() {
+    for (const tile of tiles) {
+      tile.classList.remove(...colors);
+      tile.classList.add(getRandomColor());
+    }
+    if (checkMatches().length > 0) {
+      generateValidGrid(); // Regenerate if matches exist
+    }
+  }
+
   function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Select a tile to swap
   function selectTile(e) {
+    if (isChecking) return;
     if (!selectedTile) {
       selectedTile = e.target;
       selectedTile.style.border = '2px solid #000';
     } else {
       const currentTile = e.target;
       if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
+        swapTiles(selectedTile, currentTile);
+        setTimeout(() => {
+          checkAndResolveMatches();
+        }, 500);
       }
       selectedTile.style.border = '';
       selectedTile = null;
     }
   }
 
-  // Initialize the game
+  function swapTiles(tile1, tile2) {
+    const temp = tile1.classList[1];
+    tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
+    tile2.classList.replace(tile2.classList[1], temp);
+  }
+
+  function checkMatches() {
+    const matches = [];
+    const board = Array.from(tiles).map(tile => tile.classList[1]);
+
+    // Check horizontal matches
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col <= gridSize - 3; col++) {
+        const index = row * gridSize + col;
+        if (board[index] && 
+            board[index] === board[index + 1] && 
+            board[index] === board[index + 2]) {
+          matches.push(index, index + 1, index + 2);
+        }
+      }
+    }
+
+    // Check vertical matches
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = 0; row <= gridSize - 3; row++) {
+        const index = row * gridSize + col;
+        if (board[index] && 
+            board[index] === board[index + gridSize] && 
+            board[index] === board[index + gridSize * 2]) {
+          matches.push(index, index + gridSize, index + gridSize * 2);
+        }
+      }
+    }
+
+    // Check L and T shapes
+    for (let row = 1; row < gridSize - 1; row++) {
+      for (let col = 1; col < gridSize - 1; col++) {
+        const center = row * gridSize + col;
+        const color = board[center];
+        if (color && 
+            ((board[center - gridSize] === color && board[center + gridSize] === color && board[center - 1] === color) || // L shape
+             (board[center - gridSize] === color && board[center + gridSize] === color && board[center + 1] === color) || // L shape
+             (board[center - 1] === color && board[center + 1] === color && board[center - gridSize] === color) || // T shape
+             (board[center - 1] === color && board[center + 1] === color && board[center + gridSize] === color))) { // T shape
+          matches.push(center, center - gridSize, center + gridSize, center - 1, center + 1);
+        }
+      }
+    }
+
+    return [...new Set(matches)];
+  }
+
+  function checkAndResolveMatches() {
+    if (isChecking) return;
+    isChecking = true;
+    const matches = checkMatches();
+    if (matches.length > 0) {
+      removeMatches(matches);
+      dropTiles();
+      fillEmptySpaces();
+      setTimeout(checkAndResolveMatches, 500);
+    } else {
+      isChecking = false;
+    }
+  }
+
+  function removeMatches(indices) {
+    indices.forEach(index => {
+      tiles[index].classList.remove(...colors);
+      tiles[index].classList.add('empty');
+    });
+  }
+
+  function dropTiles() {
+    for (let col = 0; col < gridSize; col++) {
+      const column = [];
+      for (let row = 0; row < gridSize; row++) {
+        column.push(row * gridSize + col);
+      }
+      let emptySpots = 0;
+      for (let i = column.length - 1; i >= 0; i--) {
+        const tile = tiles[column[i]];
+        if (tile.classList.contains('empty')) {
+          emptySpots++;
+        } else if (emptySpots > 0) {
+          tile.classList.remove(...colors);
+          tile.classList.add('empty');
+          tiles[column[i + emptySpots]].classList.remove('empty');
+          tiles[column[i + emptySpots]].classList.add(...tile.classList);
+        }
+      }
+    }
+  }
+
+  function fillEmptySpaces() {
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i].classList.contains('empty')) {
+        tiles[i].classList.remove('empty');
+        tiles[i].classList.add(getRandomColor());
+      }
+    }
+  }
+
   createGrid();
 </script>
 
