@@ -32,7 +32,7 @@
       height: 50px;
       border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out, opacity 0.3s;
       position: relative;
     }
 
@@ -48,25 +48,21 @@
     .color5 { background: #deb887; }
     .color6 { background: #add8e6; }
 
-    /* Анимации */
+    .tile.removing {
+      animation: removeTile 0.5s ease-out forwards;
+    }
+
     @keyframes removeTile {
-      100% { 
-        opacity: 0;
-        transform: scale(0);
-      }
+      100% { opacity: 0; transform: scale(0.1); }
+    }
+
+    .tile.falling {
+      animation: fallTile 0.5s ease-out forwards;
     }
 
     @keyframes fallTile {
       from { transform: translateY(-50px); }
       to { transform: translateY(0); }
-    }
-
-    .removing {
-      animation: removeTile 0.5s forwards;
-    }
-
-    .falling {
-      animation: fallTile 0.5s forwards;
     }
   </style>
 </head>
@@ -80,213 +76,178 @@
   const gameContainer = document.getElementById('game-container');
   let tiles = [];
   let selectedTile = null;
+  let isProcessing = false;
 
   // Create the game grid
   function createGrid() {
     for (let i = 0; i < gridSize * gridSize; i++) {
       const tile = document.createElement('div');
       tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
+      tile.setAttribute('data-row', Math.floor(i / gridSize));
+      tile.setAttribute('data-col', i % gridSize);
       tile.addEventListener('click', selectTile);
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
   }
 
-  // Get a random color
+  // Get a random color from the colors array
   function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Select a tile
+  // Select a tile to swap
   function selectTile(e) {
+    if (isProcessing) return;
     if (!selectedTile) {
       selectedTile = e.target;
+      selectedTile.style.boxShadow = '0 0 8px 2px rgba(0,0,0,0.3)';
     } else {
-      swapTiles(selectedTile, e.target);
-      checkMatches();
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        swapTiles(selectedTile, currentTile);
+        checkMatches();
+      }
+      selectedTile.style.boxShadow = '';
       selectedTile = null;
     }
   }
 
   // Swap two tiles
-  function swapTiles(tile1, tile2) {
-    const temp = tile1.style.order;
-    tile1.style.order = tile2.style.order;
-    tile2.style.order = temp;
-    
-    // Swap positions in array
-    const index1 = tiles.indexOf(tile1);
-    const index2 = tiles.indexOf(tile2);
-    [tiles[index1], tiles[index2]] = [tiles[index2], tiles[index1]];
+  function swapTiles(tileA, tileB) {
+    const tempColor = tileA.classList[1];
+    tileA.classList.replace(tempColor, tileB.classList[1]);
+    tileB.classList.replace(tileB.classList[1], tempColor);
+    // Start processing after swap
+    checkMatches();
   }
 
-  // Check for matches
+  // Check for matching tiles
   function checkMatches() {
     const matches = [];
-    const grid = tiles.map((tile, i) => ({ 
-      tile,
-      row: Math.floor(i / gridSize),
-      col: i % gridSize,
-      color: tile.classList[1]
-    }));
+    const grid = getGrid();
 
-    // Horizontal matches
+    // Horizontal checks
     for (let row = 0; row < gridSize; row++) {
-      let currentColor;
-      let count = 0;
-      let startCol;
-      for (let col = 0; col < gridSize; col++) {
-        const tile = grid[row * gridSize + col];
-        if (tile.color === currentColor) {
-          count++;
-        } else {
-          if (count >= 3) {
-            for (let i = startCol; i < startCol + count; i++) {
-              matches.push(grid[row * gridSize + i].tile);
-            }
-          }
-          currentColor = tile.color;
-          count = 1;
-          startCol = col;
-        }
-      }
-      if (count >= 3) {
-        for (let i = startCol; i < startCol + count; i++) {
-          matches.push(grid[row * gridSize + i].tile);
+      for (let col = 0; col < gridSize - 2; col++) {
+        const color = grid[row][col].classList[1];
+        if (color === grid[row][col + 1].classList[1] &&
+            color === grid[row][col + 2].classList[1]) {
+          markMatched(row, col, row, col + 2);
         }
       }
     }
 
-    // Vertical matches
+    // Vertical checks
     for (let col = 0; col < gridSize; col++) {
-      let currentColor;
-      let count = 0;
-      let startRow;
-      for (let row = 0; row < gridSize; row++) {
-        const index = row * gridSize + col;
-        const tile = grid[index];
-        if (tile.color === currentColor) {
-          count++;
-        } else {
-          if (count >= 3) {
-            for (let i = startRow; i < startRow + count; i++) {
-              matches.push(grid[i * gridSize + col].tile);
-            }
-          }
-          currentColor = tile.color;
-          count = 1;
-          startRow = row;
-        }
-      }
-      if (count >= 3) {
-        for (let i = startRow; i < startRow + count; i++) {
-          matches.push(grid[i * gridSize + col].tile);
+      for (let row = 0; row < gridSize - 2; row++) {
+        const color = grid[row][col].classList[1];
+        if (color === grid[row + 1][col].classList[1] &&
+            color === grid[row + 2][col].classList[1]) {
+          markMatched(row, col, row + 2, col);
         }
       }
     }
 
-    // Process matches
     if (matches.length > 0) {
-      handleMatches(matches);
+      processMatches(matches);
+    } else {
+      selectedTile.style.boxShadow = '';
+      selectedTile = null;
     }
   }
 
-  // Handle matches removal
-  async function handleMatches(matches) {
-    // Remove matched tiles
-    matches.forEach(tile => {
+  // Mark matched tiles
+  function markMatched(r1, c1, r2, c2) {
+    for (let row = Math.min(r1, r2); row <= Math.max(r1, r2); row++) {
+      for (let col = Math.min(c1, c2); col <= Math.max(c1, c2); col++) {
+        matches.push(getTileByCoordinates(row, col));
+      }
+    }
+  }
+
+  // Process matches
+  function processMatches(matches) {
+    isProcessing = true;
+    const uniqueMatches = [...new Set(matches)];
+    
+    // Animate removal
+    uniqueMatches.forEach(tile => {
       tile.classList.add('removing');
-      tile.style.pointerEvents = 'none';
-    });
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Clear removed tiles
-    matches.forEach(tile => {
-      tile.remove();
-      const index = tiles.indexOf(tile);
-      if (index > -1) tiles.splice(index, 1);
     });
 
-    // Rebuild grid with falling tiles
-    await fallTiles();
-    
-    // Fill empty spaces
-    await refillGrid();
-  }
-
-  // Falling animation
-  async function fallTiles() {
-    const columns = Array.from({ length: gridSize }, () => []);
-
-    // Collect tiles per column
-    tiles.forEach((tile, i) => {
-      const col = i % gridSize;
-      columns[col].push(tile);
-    });
-
-    // Animate falling
-    columns.forEach(col => {
-      col.forEach((tile, row) => {
-        const targetRow = gridSize - 1 - row;
-        const currentRow = parseInt(tile.style.order) / gridSize;
-        const deltaY = (targetRow - currentRow) * 55; // 50px + 5px gap
-
-        tile.style.transform = `translateY(${deltaY}px)`;
-        tile.classList.add('falling');
+    setTimeout(() => {
+      uniqueMatches.forEach(tile => {
+        tile.remove();
       });
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Reset styles after animation
-    tiles.forEach(tile => {
-      tile.style.transform = '';
-      tile.classList.remove('falling');
-      tile.style.order = '';
-    });
+      tiles = tiles.filter(tile => !uniqueMatches.includes(tile));
+      fallTiles();
+    }, 500);
   }
 
-  // Refill empty spaces
-  async function refillGrid() {
-    const newTiles = [];
-
-    // Create new tiles for each column
+  // Tiles falling animation
+  function fallTiles() {
+    const grid = getGrid();
     for (let col = 0; col < gridSize; col++) {
-      const columnTiles = tiles.filter((_, i) => i % gridSize === col);
-      const emptySpaces = gridSize - columnTiles.length;
-
-      for (let i = 0; i < emptySpaces; i++) {
-        const newTile = document.createElement('div');
-        newTile.classList.add('tile', getRandomColor());
-        newTile.style.order = `${i}`;
-        newTiles.push(newTile);
+      for (let row = gridSize - 1; row >= 0; row--) {
+        const tile = grid[row][col];
+        if (!tile) {
+          let fallRow = row - 1;
+          while (fallRow >= 0 && grid[fallRow][col]) {
+            grid[fallRow][col].classList.add('falling');
+            const targetRow = row;
+            grid[fallRow][col].style.transform = `translateY(${(targetRow - fallRow) * 50}px)`;
+            fallRow--;
+          }
+        }
       }
     }
 
-    // Add new tiles
-    newTiles.forEach(tile => {
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
-    });
-
-    // Reorganize tiles
-    tiles.sort((a, b) => {
-      const aPos = a.style.order ? parseInt(a.style.order) : 0;
-      const bPos = b.style.order ? parseInt(b.style.order) : 0;
-      return aPos - bPos;
-    });
-
-    // Reset orders
-    tiles.forEach((tile, i) => {
-      tile.style.order = '';
-      tile.style.transform = '';
-      tile.style.pointerEvents = '';
-    });
+    setTimeout(() => {
+      refillGrid();
+    }, 500);
   }
 
-  // Initialize
+  // Refill grid with new tiles
+  function refillGrid() {
+    const grid = getGrid();
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = 0; row < gridSize; row++) {
+        if (!grid[row][col]) {
+          const newTile = document.createElement('div');
+          newTile.classList.add('tile', getRandomColor());
+          newTile.setAttribute('data-row', row);
+          newTile.setAttribute('data-col', col);
+          newTile.addEventListener('click', selectTile);
+          gameContainer.insertBefore(newTile, grid[row][col]);
+          tiles.push(newTile);
+        }
+      }
+    }
+    isProcessing = false;
+    checkMatches();
+  }
+
+  // Get current grid state
+  function getGrid() {
+    const grid = Array.from({ length: gridSize }, () => []);
+    tiles.forEach(tile => {
+      const row = parseInt(tile.getAttribute('data-row'));
+      const col = parseInt(tile.getAttribute('data-col'));
+      grid[row][col] = tile;
+    });
+    return grid;
+  }
+
+  // Get tile by coordinates
+  function getTileByCoordinates(row, col) {
+    return tiles.find(tile => 
+      parseInt(tile.getAttribute('data-row')) === row &&
+      parseInt(tile.getAttribute('data-col')) === col
+    );
+  }
+
+  // Initialize the game
   createGrid();
 </script>
 
