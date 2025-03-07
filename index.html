@@ -106,7 +106,6 @@
       const currentTile = e.target;
       if (selectedTile !== currentTile) {
         swapTiles(selectedTile, currentTile);
-        checkMatches();
       }
       selectedTile.style.boxShadow = '';
       selectedTile = null;
@@ -115,17 +114,27 @@
 
   // Swap two tiles
   function swapTiles(tileA, tileB) {
+    // Swap colors
     const tempColor = tileA.classList[1];
     tileA.classList.replace(tempColor, tileB.classList[1]);
     tileB.classList.replace(tileB.classList[1], tempColor);
-    // Start processing after swap
+
+    // Update coordinates
+    const tempRow = tileA.getAttribute('data-row');
+    const tempCol = tileA.getAttribute('data-col');
+    tileA.setAttribute('data-row', tileB.getAttribute('data-row'));
+    tileA.setAttribute('data-col', tileB.getAttribute('data-col'));
+    tileB.setAttribute('data-row', tempRow);
+    tileB.setAttribute('data-col', tempCol);
+
+    // Check matches after swap
     checkMatches();
   }
 
   // Check for matching tiles
   function checkMatches() {
-    const matches = [];
     const grid = getGrid();
+    const matches = [];
 
     // Horizontal checks
     for (let row = 0; row < gridSize; row++) {
@@ -133,7 +142,7 @@
         const color = grid[row][col].classList[1];
         if (color === grid[row][col + 1].classList[1] &&
             color === grid[row][col + 2].classList[1]) {
-          markMatched(row, col, row, col + 2);
+          markMatched(row, col, row, col + 2, matches);
         }
       }
     }
@@ -144,24 +153,33 @@
         const color = grid[row][col].classList[1];
         if (color === grid[row + 1][col].classList[1] &&
             color === grid[row + 2][col].classList[1]) {
-          markMatched(row, col, row + 2, col);
+          markMatched(row, col, row + 2, col, matches);
         }
       }
     }
 
+    // Process matches if found
     if (matches.length > 0) {
       processMatches(matches);
     } else {
-      selectedTile.style.boxShadow = '';
-      selectedTile = null;
+      // Revert swap if no matches found
+      swapTiles(tileA, tileB);
     }
   }
 
   // Mark matched tiles
-  function markMatched(r1, c1, r2, c2) {
-    for (let row = Math.min(r1, r2); row <= Math.max(r1, r2); row++) {
-      for (let col = Math.min(c1, c2); col <= Math.max(c1, c2); col++) {
-        matches.push(getTileByCoordinates(row, col));
+  function markMatched(r1, c1, r2, c2, matches) {
+    const startRow = Math.min(r1, r2);
+    const endRow = Math.max(r1, r2);
+    const startCol = Math.min(c1, c2);
+    const endCol = Math.max(c1, c2);
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        const tile = getTileByCoordinates(row, col);
+        if (tile && !matches.includes(tile)) {
+          matches.push(tile);
+        }
       }
     }
   }
@@ -170,7 +188,7 @@
   function processMatches(matches) {
     isProcessing = true;
     const uniqueMatches = [...new Set(matches)];
-    
+
     // Animate removal
     uniqueMatches.forEach(tile => {
       tile.classList.add('removing');
@@ -194,9 +212,9 @@
         if (!tile) {
           let fallRow = row - 1;
           while (fallRow >= 0 && grid[fallRow][col]) {
-            grid[fallRow][col].classList.add('falling');
-            const targetRow = row;
-            grid[fallRow][col].style.transform = `translateY(${(targetRow - fallRow) * 50}px)`;
+            const fallingTile = grid[fallRow][col];
+            fallingTile.classList.add('falling');
+            fallingTile.style.transform = `translateY(${(row - fallRow) * 50}px)`;
             fallRow--;
           }
         }
@@ -219,11 +237,12 @@
           newTile.setAttribute('data-row', row);
           newTile.setAttribute('data-col', col);
           newTile.addEventListener('click', selectTile);
-          gameContainer.insertBefore(newTile, grid[row][col]);
+          gameContainer.appendChild(newTile);
           tiles.push(newTile);
         }
       }
     }
+
     isProcessing = false;
     checkMatches();
   }
