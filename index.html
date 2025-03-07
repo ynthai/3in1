@@ -12,7 +12,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: #f0f8ff; /* Minimally soft blue */
+      background: #f0f8ff;
       font-family: 'Helvetica', sans-serif;
     }
 
@@ -33,6 +33,10 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+      position: relative;
+      /* Анимации */
+      transition-property: transform, opacity;
+      transition-duration: 0.5s;
     }
 
     .tile:hover {
@@ -40,12 +44,23 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
 
-    .color1 { background: #ffcccb; } /* Soft pink */
-    .color2 { background: #b0e0e6; } /* Powder blue */
-    .color3 { background: #fff8dc; } /* Lemon chiffon */
-    .color4 { background: #d1e231; } /* Lime green */
-    .color5 { background: #deb887; } /* Burlywood */
-    .color6 { background: #add8e6; } /* Light blue */
+    .color1 { background: #ffcccb; }
+    .color2 { background: #b0e0e6; }
+    .color3 { background: #fff8dc; }
+    .color4 { background: #d1e231; }
+    .color5 { background: #deb887; }
+    .color6 { background: #add8e6; }
+
+    /* Анимация удаления */
+    .tile.fade-out {
+      opacity: 0;
+      transform: scale(0);
+    }
+
+    /* Анимация падения */
+    .tile.falling {
+      transform: translateY(-100%);
+    }
   </style>
 </head>
 <body>
@@ -59,24 +74,27 @@
   let tiles = [];
   let selectedTile = null;
 
-  // Create the game grid
+  // Создание сетки
   function createGrid() {
+    tiles = [];
+    gameContainer.innerHTML = '';
     for (let i = 0; i < gridSize * gridSize; i++) {
       const tile = document.createElement('div');
       tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('draggable', true);
+      tile.setAttribute('data-row', Math.floor(i / gridSize));
+      tile.setAttribute('data-col', i % gridSize);
       tile.addEventListener('click', selectTile);
       gameContainer.appendChild(tile);
       tiles.push(tile);
     }
   }
 
-  // Get a random color from the colors array
+  // Получение случайного цвета
   function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Select a tile to swap
+  // Выбор плитки
   function selectTile(e) {
     if (!selectedTile) {
       selectedTile = e.target;
@@ -84,16 +102,154 @@
     } else {
       const currentTile = e.target;
       if (selectedTile !== currentTile) {
-        const temp = selectedTile.classList[1];
-        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
-        currentTile.classList.replace(currentTile.classList[1], temp);
+        swapTiles(selectedTile, currentTile);
       }
       selectedTile.style.border = '';
       selectedTile = null;
+      checkForMatches();
     }
   }
 
-  // Initialize the game
+  // Обмен плиток
+  function swapTiles(tile1, tile2) {
+    const tempColor = tile1.classList[1];
+    tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
+    tile2.classList.replace(tile2.classList[1], tempColor);
+  }
+
+  // Поиск совпадений
+  function checkForMatches() {
+    const matches = [];
+    const grid = tiles.map(tile => ({ 
+      row: parseInt(tile.getAttribute('data-row')),
+      col: parseInt(tile.getAttribute('data-col')),
+      color: tile.classList[1]
+    }));
+
+    // Проверка горизонтальных совпадений
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize - 2; col++) {
+        const color = grid[row * gridSize + col].color;
+        if (color === grid[row * gridSize + col + 1].color &&
+            color === grid[row * gridSize + col + 2].color) {
+          matches.push(...getHorizontalMatchTiles(row, col));
+        }
+      }
+    }
+
+    // Проверка вертикальных совпадений
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = 0; row < gridSize - 2; row++) {
+        const color = grid[row * gridSize + col].color;
+        if (color === grid[(row + 1) * gridSize + col].color &&
+            color === grid[(row + 2) * gridSize + col].color) {
+          matches.push(...getVerticalMatchTiles(row, col));
+        }
+      }
+    }
+
+    processMatches(matches);
+  }
+
+  // Обработка совпадений
+  async function processMatches(matches) {
+    if (matches.length === 0) return;
+
+    // Удаление совпадений
+    matches.forEach(tile => tile.classList.add('fade-out'));
+    await sleep(500);
+
+    matches.forEach(tile => {
+      tile.remove();
+      const index = tiles.indexOf(tile);
+      if (index !== -1) tiles.splice(index, 1);
+    });
+
+    // Опускание плиток
+    await fallTiles();
+    await refillTiles();
+    await processMatches(checkForMatches()); // Проверка новых совпадений
+  }
+
+  // Опускание плиток
+  async function fallTiles() {
+    const columns = Array.from({ length: gridSize }, () => []);
+    tiles.forEach(tile => {
+      const col = parseInt(tile.getAttribute('data-col'));
+      columns[col].push(tile);
+    });
+
+    columns.forEach(col => {
+      col.forEach((tile, i) => {
+        const targetRow = col.length - i - 1;
+        const deltaY = targetRow - parseInt(tile.getAttribute('data-row'));
+        if (deltaY > 0) {
+          tile.style.transform = `translateY(-${deltaY * 50}px)`;
+          setTimeout(() => {
+            tile.style.transform = '';
+            tile.setAttribute('data-row', targetRow);
+          }, 500);
+        }
+      });
+    });
+
+    await sleep(500);
+  }
+
+  // Заполнение новыми плитками
+  async function refillTiles() {
+    const newTiles = [];
+    for (let col = 0; col < gridSize; col++) {
+      const columnTiles = Array.from(gameContainer.children)
+        .filter(tile => parseInt(tile.getAttribute('data-col')) === col)
+        .sort((a, b) => 
+          parseInt(a.getAttribute('data-row')) - parseInt(b.getAttribute('data-row'))
+        );
+      
+      let emptySlots = 6 - columnTiles.length;
+      while (emptySlots > 0) {
+        const newTile = document.createElement('div');
+        newTile.classList.add('tile', getRandomColor());
+        newTile.setAttribute('data-row', -emptySlots);
+        newTile.setAttribute('data-col', col);
+        newTile.style.transform = `translateY(${emptySlots * 50}px)`;
+        newTiles.push(newTile);
+        emptySlots--;
+      }
+    }
+
+    gameContainer.append(...newTiles);
+    tiles = Array.from(gameContainer.children);
+    await sleep(500);
+    newTiles.forEach(tile => tile.style.transform = '');
+  }
+
+  // Вспомогательные функции
+  function getHorizontalMatchTiles(row, startCol) {
+    return [
+      getTileAt(row, startCol),
+      getTileAt(row, startCol + 1),
+      getTileAt(row, startCol + 2)
+    ];
+  }
+
+  function getVerticalMatchTiles(startRow, col) {
+    return [
+      getTileAt(startRow, col),
+      getTileAt(startRow + 1, col),
+      getTileAt(startRow + 2, col)
+    ];
+  }
+
+  function getTileAt(row, col) {
+    return tiles[row * gridSize + col];
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Инициализация
   createGrid();
 </script>
 
