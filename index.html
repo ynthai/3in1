@@ -33,9 +33,8 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-      position: relative;
-      /* Анимации */
-      transition-property: transform, opacity;
+      opacity: 1;
+      transform: translateY(0);
       transition-duration: 0.5s;
     }
 
@@ -51,15 +50,20 @@
     .color5 { background: #deb887; }
     .color6 { background: #add8e6; }
 
-    /* Анимация удаления */
-    .tile.fade-out {
-      opacity: 0;
-      transform: scale(0);
+    .tile-deleting {
+      animation: delete 0.5s ease-in-out;
+    }
+    @keyframes delete {
+      0% { opacity: 1; }
+      100% { opacity: 0; transform: scale(0); }
     }
 
-    /* Анимация падения */
-    .tile.falling {
-      transform: translateY(-100%);
+    .tile-falling {
+      animation: fall 0.5s ease-in-out;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-50px); }
+      100% { transform: translateY(0); }
     }
   </style>
 </head>
@@ -74,182 +78,195 @@
   let tiles = [];
   let selectedTile = null;
 
+  // Создаем двумерный массив для хранения плиток
+  const grid = Array.from({ length: gridSize }, () => Array(gridSize));
+
   // Создание сетки
   function createGrid() {
     tiles = [];
-    gameContainer.innerHTML = '';
-    for (let i = 0; i < gridSize * gridSize; i++) {
-      const tile = document.createElement('div');
-      tile.classList.add('tile', getRandomColor());
-      tile.setAttribute('data-row', Math.floor(i / gridSize));
-      tile.setAttribute('data-col', i % gridSize);
-      tile.addEventListener('click', selectTile);
-      gameContainer.appendChild(tile);
-      tiles.push(tile);
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        const tile = document.createElement('div');
+        tile.classList.add('tile', getRandomColor());
+        tile.dataset.row = row;
+        tile.dataset.col = col;
+        tile.addEventListener('click', selectTile);
+        gameContainer.appendChild(tile);
+        grid[row][col] = tile;
+        tiles.push(tile);
+      }
     }
   }
 
-  // Получение случайного цвета
   function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Выбор плитки
   function selectTile(e) {
     if (!selectedTile) {
       selectedTile = e.target;
-      selectedTile.style.border = '2px solid #000';
     } else {
       const currentTile = e.target;
       if (selectedTile !== currentTile) {
         swapTiles(selectedTile, currentTile);
       }
-      selectedTile.style.border = '';
       selectedTile = null;
-      checkForMatches();
     }
   }
 
-  // Обмен плиток
-  function swapTiles(tile1, tile2) {
-    const tempColor = tile1.classList[1];
-    tile1.classList.replace(tile1.classList[1], tile2.classList[1]);
-    tile2.classList.replace(tile2.classList[1], tempColor);
+  async function swapTiles(tileA, tileB) {
+    const tempColor = tileA.classList[1];
+    const tempRowA = parseInt(tileA.dataset.row);
+    const tempColA = parseInt(tileA.dataset.col);
+    const tempRowB = parseInt(tileB.dataset.row);
+    const tempColB = parseInt(tileB.dataset.col);
+
+    // Меняем местами
+    tileA.classList.replace(tileA.classList[1], tileB.classList[1]);
+    tileB.classList.replace(tileB.classList[1], tempColor);
+    
+    // Проверка совпадений
+    await checkMatchesAndAnimate();
   }
 
-  // Поиск совпадений
-  function checkForMatches() {
-    const matches = [];
-    const grid = tiles.map(tile => ({ 
-      row: parseInt(tile.getAttribute('data-row')),
-      col: parseInt(tile.getAttribute('data-col')),
-      color: tile.classList[1]
-    }));
+  async function checkMatchesAndAnimate() {
+    const matches = findMatches();
+    if (matches.length > 0) {
+      await deleteMatches(matches);
+      await fallTiles();
+      await generateNewTiles();
+      await checkMatchesAndAnimate(); // Рекурсивная проверка
+    }
+  }
 
-    // Проверка горизонтальных совпадений
+  function findMatches() {
+    const matches = new Set();
+    
+    // Горизонтальные совпадения
     for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize - 2; col++) {
-        const color = grid[row * gridSize + col].color;
-        if (color === grid[row * gridSize + col + 1].color &&
-            color === grid[row * gridSize + col + 2].color) {
-          matches.push(...getHorizontalMatchTiles(row, col));
+      let currentColor = null;
+      let count = 0;
+      let startCol = 0;
+      for (let col = 0; col < gridSize; col++) {
+        const tile = grid[row][col];
+        if (tile.classList[1] === currentColor) {
+          count++;
+        } else {
+          if (count >= 3) {
+            for (let i = startCol; i < startCol + count; i++) {
+              matches.add(grid[row][i]);
+            }
+          }
+          currentColor = tile.classList[1];
+          count = 1;
+          startCol = col;
+        }
+      }
+      if (count >= 3) {
+        for (let i = startCol; i < startCol + count; i++) {
+          matches.add(grid[row][i]);
         }
       }
     }
 
-    // Проверка вертикальных совпадений
+    // Вертикальные совпадения
     for (let col = 0; col < gridSize; col++) {
-      for (let row = 0; row < gridSize - 2; row++) {
-        const color = grid[row * gridSize + col].color;
-        if (color === grid[(row + 1) * gridSize + col].color &&
-            color === grid[(row + 2) * gridSize + col].color) {
-          matches.push(...getVerticalMatchTiles(row, col));
+      let currentColor = null;
+      let count = 0;
+      let startRow = 0;
+      for (let row = 0; row < gridSize; row++) {
+        const tile = grid[row][col];
+        if (tile.classList[1] === currentColor) {
+          count++;
+        } else {
+          if (count >= 3) {
+            for (let i = startRow; i < startRow + count; i++) {
+              matches.add(grid[i][col]);
+            }
+          }
+          currentColor = tile.classList[1];
+          count = 1;
+          startRow = row;
+        }
+      }
+      if (count >= 3) {
+        for (let i = startRow; i < startRow + count; i++) {
+          matches.add(grid[i][col]);
         }
       }
     }
 
-    processMatches(matches);
+    return Array.from(matches);
   }
 
-  // Обработка совпадений
-  async function processMatches(matches) {
-    if (matches.length === 0) return;
-
-    // Удаление совпадений
-    matches.forEach(tile => tile.classList.add('fade-out'));
-    await sleep(500);
-
+  async function deleteMatches(matches) {
+    matches.forEach(tile => {
+      tile.classList.add('tile-deleting');
+    });
+    await new Promise(r => setTimeout(r, 500));
     matches.forEach(tile => {
       tile.remove();
-      const index = tiles.indexOf(tile);
-      if (index !== -1) tiles.splice(index, 1);
+      const row = parseInt(tile.dataset.row);
+      const col = parseInt(tile.dataset.col);
+      grid[row][col] = null;
     });
-
-    // Опускание плиток
-    await fallTiles();
-    await refillTiles();
-    await processMatches(checkForMatches()); // Проверка новых совпадений
   }
 
-  // Опускание плиток
   async function fallTiles() {
-    const columns = Array.from({ length: gridSize }, () => []);
-    tiles.forEach(tile => {
-      const col = parseInt(tile.getAttribute('data-col'));
-      columns[col].push(tile);
-    });
-
-    columns.forEach(col => {
-      col.forEach((tile, i) => {
-        const targetRow = col.length - i - 1;
-        const deltaY = targetRow - parseInt(tile.getAttribute('data-row'));
-        if (deltaY > 0) {
-          tile.style.transform = `translateY(-${deltaY * 50}px)`;
-          setTimeout(() => {
-            tile.style.transform = '';
-            tile.setAttribute('data-row', targetRow);
-          }, 500);
-        }
-      });
-    });
-
-    await sleep(500);
-  }
-
-  // Заполнение новыми плитками
-  async function refillTiles() {
-    const newTiles = [];
     for (let col = 0; col < gridSize; col++) {
-      const columnTiles = Array.from(gameContainer.children)
-        .filter(tile => parseInt(tile.getAttribute('data-col')) === col)
-        .sort((a, b) => 
-          parseInt(a.getAttribute('data-row')) - parseInt(b.getAttribute('data-row'))
-        );
-      
-      let emptySlots = 6 - columnTiles.length;
-      while (emptySlots > 0) {
-        const newTile = document.createElement('div');
-        newTile.classList.add('tile', getRandomColor());
-        newTile.setAttribute('data-row', -emptySlots);
-        newTile.setAttribute('data-col', col);
-        newTile.style.transform = `translateY(${emptySlots * 50}px)`;
-        newTiles.push(newTile);
-        emptySlots--;
+      for (let row = gridSize - 1; row >= 0; row--) {
+        if (!grid[row][col]) {
+          for (let i = row - 1; i >= 0; i--) {
+            if (grid[i][col]) {
+              grid[i][col].dataset.row = row;
+              grid[i][col].classList.add('tile-falling');
+              grid[row][col] = grid[i][col];
+              grid[i][col] = null;
+              break;
+            }
+          }
+        }
       }
     }
-
-    gameContainer.append(...newTiles);
+    await new Promise(r => setTimeout(r, 500));
     tiles = Array.from(gameContainer.children);
-    await sleep(500);
-    newTiles.forEach(tile => tile.style.transform = '');
+    updateGrid();
   }
 
-  // Вспомогательные функции
-  function getHorizontalMatchTiles(row, startCol) {
-    return [
-      getTileAt(row, startCol),
-      getTileAt(row, startCol + 1),
-      getTileAt(row, startCol + 2)
-    ];
+  function generateNewTiles() {
+    for (let col = 0; col < gridSize; col++) {
+      for (let row = gridSize - 1; row >= 0; row--) {
+        if (!grid[row][col]) {
+          const newTile = document.createElement('div');
+          newTile.classList.add('tile', getRandomColor());
+          newTile.dataset.row = row;
+          newTile.dataset.col = col;
+          newTile.addEventListener('click', selectTile);
+          grid[row][col] = newTile;
+          gameContainer.appendChild(newTile);
+        }
+      }
+    }
+    updateGrid();
   }
 
-  function getVerticalMatchTiles(startRow, col) {
-    return [
-      getTileAt(startRow, col),
-      getTileAt(startRow + 1, col),
-      getTileAt(startRow + 2, col)
-    ];
+  function updateGrid() {
+    gameContainer.innerHTML = '';
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        if (grid[row][col]) {
+          gameContainer.appendChild(grid[row][col]);
+        }
+      }
+    }
+    tiles = Array.from(gameContainer.children);
+    for (const tile of tiles) {
+      tile.style.transform = '';
+      tile.style.opacity = '1';
+      tile.classList.remove('tile-deleting', 'tile-falling');
+    }
   }
 
-  function getTileAt(row, col) {
-    return tiles[row * gridSize + col];
-  }
-
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Инициализация
   createGrid();
 </script>
 
