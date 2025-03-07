@@ -32,7 +32,7 @@
       height: 50px;
       border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.3s ease, opacity 0.3s ease, transform 0.5s ease;
+      transition: transform 0.3s ease, opacity 0.3s ease;
     }
 
     .tile:hover {
@@ -116,22 +116,29 @@
     const tempColor = tileA.classList[1];
     tileA.classList.replace(tileA.classList[1], tileB.classList[1]);
     tileB.classList.replace(tileB.classList[1], tempColor);
+
     // Обновляем позиции в сетке
-    const tempRow = tileA.dataset.row;
-    const tempCol = tileA.dataset.col;
+    const tempRow = parseInt(tileA.dataset.row);
+    const tempCol = parseInt(tileA.dataset.col);
     tileA.dataset.row = tileB.dataset.row;
     tileA.dataset.col = tileB.dataset.col;
-    tileB.dataset.row = tempRow;
-    tileB.dataset.col = tempCol;
-    [grid[tileA.dataset.row][tileA.dataset.col], grid[tileB.dataset.row][tileB.dataset.col]] = [tileA, tileB];
+    tileB.dataset.row = tempRow.toString();
+    tileB.dataset.col = tempCol.toString();
+
+    // Обновляем grid
+    const rowA = tempRow;
+    const colA = tempCol;
+    const rowB = parseInt(tileB.dataset.row);
+    const colB = parseInt(tileB.dataset.col);
+    grid[rowA][colA] = tileB;
+    grid[rowB][colB] = tileA;
   }
 
   // Проверка совпадений и обработка
   async function checkAndProcess() {
     isProcessing = true;
     await processMatches();
-    await processFalling();
-    await refillGrid();
+    if (selectedTile) selectedTile = null; // Сброс выбора
     isProcessing = false;
   }
 
@@ -140,24 +147,32 @@
     const matches = new Set();
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
-        const color = grid[row][col].classList[1];
-        // Горизонтальные совпадения
+        const currentTile = grid[row][col];
+        if (!currentTile) continue;
+        const color = currentTile.classList[1];
+        
+        // Горизонтальные
         let count = 1;
         for (let c = col + 1; c < gridSize; c++) {
           if (grid[row][c]?.classList[1] === color) count++;
           else break;
         }
         if (count >= 3) {
-          for (let i = 0; i < count; i++) matches.add(grid[row][col + i]);
+          for (let i = 0; i < count; i++) {
+            matches.add(grid[row][col + i]);
+          }
         }
-        // Вертикальные совпадения
+
+        // Вертикальные
         count = 1;
         for (let r = row + 1; r < gridSize; r++) {
           if (grid[r][col]?.classList[1] === color) count++;
           else break;
         }
         if (count >= 3) {
-          for (let i = 0; i < count; i++) matches.add(grid[row + i][col]);
+          for (let i = 0; i < count; i++) {
+            matches.add(grid[row + i][col]);
+          }
         }
       }
     }
@@ -169,9 +184,19 @@
     const matches = findMatches();
     if (!matches.length) return;
     matches.forEach(tile => tile.classList.add('removed'));
-    await new Promise(r => setTimeout(r, 300));
-    matches.forEach(tile => gameContainer.removeChild(tile));
-    tiles = tiles.filter(tile => !matches.includes(tile));
+    await new Promise(resolve => setTimeout(resolve, 300));
+    matches.forEach(tile => {
+      gameContainer.removeChild(tile);
+      tiles = tiles.filter(t => t !== tile);
+    });
+    grid = Array.from({ length: gridSize }, () => Array(gridSize));
+    tiles.forEach(tile => {
+      const row = parseInt(tile.dataset.row);
+      const col = parseInt(tile.dataset.col);
+      grid[row][col] = tile;
+    });
+    await processFalling();
+    await refillGrid();
   }
 
   // Падение плиток
@@ -182,10 +207,10 @@
       for (let row = gridSize - 1; row >= 0; row--) {
         const tile = grid[row][col];
         if (tile) {
-          const targetRow = emptyRows.length > 0 ? emptyRows.pop() : row;
+          const targetRow = emptyRows.length ? emptyRows.pop() : row;
           newGrid[targetRow][col] = tile;
           if (targetRow !== row) {
-            tile.style.transform = `translateY(${(targetRow - row)*55}px)`;
+            tile.style.transform = `translateY(${(targetRow - row) * 55}px)`;
             tile.classList.add('falling');
           }
         } else {
@@ -194,7 +219,7 @@
       }
     }
     grid = newGrid;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(resolve => setTimeout(resolve, 300));
     tiles.forEach(tile => tile.style.transform = '');
   }
 
@@ -211,7 +236,7 @@
           gameContainer.appendChild(newTile);
           grid[row][col] = newTile;
           tiles.push(newTile);
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise(resolve => setTimeout(resolve, 100));
           newTile.classList.remove('new-tile');
         }
       }
