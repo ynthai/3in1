@@ -3,227 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puzzle & Dragons</title>
+  <title>Minimalist Puzzle Game</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #f4f4f4;
       margin: 0;
       padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f8ff; /* Minimally soft blue */
+      font-family: 'Helvetica', sans-serif;
     }
 
-    #game-container {
+    .game-container {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(6, 50px);
       gap: 5px;
-      width: 300px;
-      margin: 20px auto;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    .cell {
+    .tile {
       width: 50px;
       height: 50px;
-      border-radius: 5px;
-      cursor: grab;
-      transition: transform 0.2s;
-    }
-
-    .fire { background-color: red; }
-    .water { background-color: blue; }
-    .earth { background-color: green; }
-    .air { background-color: gray; }
-
-    #score {
-      font-size: 24px;
-      color: #333;
-      margin-top: 20px;
-    }
-
-    .score-animation {
-      animation: scorePop 0.5s ease-in-out;
-    }
-
-    @keyframes scorePop {
-      0% {
-        transform: scale(1);
-        color: #333;
-      }
-      50% {
-        transform: scale(1.5);
-        color: gold;
-      }
-      100% {
-        transform: scale(1);
-        color: #333;
-      }
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 16px;
+      border-radius: 10px;
       cursor: pointer;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      transition: background-color 0.3s;
+      transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
     }
 
-    button:hover {
-      background-color: #0056b3;
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
+
+    .color1 { background: #ffcccb; } /* Soft pink */
+    .color2 { background: #b0e0e6; } /* Powder blue */
+    .color3 { background: #fff8dc; } /* Lemon chiffon */
+    .color4 { background: #d1e231; } /* Lime green */
+    .color5 { background: #deb887; } /* Burlywood */
+    .color6 { background: #add8e6; } /* Light blue */
   </style>
 </head>
 <body>
-  <h1>Puzzle & Dragons</h1>
-  <div id="game-container"></div>
-  <div id="score">Score: 0</div>
-  <button id="restart-button">Restart</button>
 
-  <script>
-    const size = 5; // Размер игрового поля (5x5)
-    let board = [];
-    let score = 0;
+<div class="game-container" id="game-container"></div>
 
-    const colors = ['fire', 'water', 'earth', 'air'];
+<script>
+  const colors = ['color1', 'color2', 'color3', 'color4', 'color5', 'color6'];
+  const gridSize = 6;
+  const gameContainer = document.getElementById('game-container');
+  let tiles = [];
+  let selectedTile = null;
 
-    // Генерация случайного игрового поля
-    function generateBoard() {
-      return Array.from({ length: size * size }, () => colors[Math.floor(Math.random() * colors.length)]);
+  // Create the game grid
+  function createGrid() {
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile', getRandomColor());
+      tile.setAttribute('draggable', true);
+      tile.addEventListener('click', selectTile);
+      gameContainer.appendChild(tile);
+      tiles.push(tile);
     }
+  }
 
-    // Отображение игрового поля
-    function renderBoard() {
-      const container = document.getElementById('game-container');
-      container.innerHTML = '';
-      board.forEach((color, index) => {
-        const cell = document.createElement('div');
-        cell.className = `cell ${color}`;
-        cell.draggable = true;
-        cell.dataset.index = index;
-        container.appendChild(cell);
-      });
-    }
+  // Get a random color from the colors array
+  function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
 
-    // Проверка совпадений
-    function checkMatches() {
-      const matches = new Set();
-      const directions = [
-        { dx: 1, dy: 0 }, // Горизонтально
-        { dx: 0, dy: 1 }  // Вертикально
-      ];
-
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const index = y * size + x;
-          const currentColor = board[index];
-
-          for (const { dx, dy } of directions) {
-            let matchCount = 1;
-            let nextX = x + dx;
-            let nextY = y + dy;
-
-            while (
-              nextX >= 0 && nextX < size &&
-              nextY >= 0 && nextY < size &&
-              board[nextY * size + nextX] === currentColor
-            ) {
-              matchCount++;
-              nextX += dx;
-              nextY += dy;
-            }
-
-            if (matchCount >= 3) {
-              for (let i = 0; i < matchCount; i++) {
-                const matchIndex = (y + i * dy) * size + (x + i * dx);
-                matches.add(matchIndex);
-              }
-            }
-          }
-        }
+  // Select a tile to swap
+  function selectTile(e) {
+    if (!selectedTile) {
+      selectedTile = e.target;
+      selectedTile.style.border = '2px solid #000';
+    } else {
+      const currentTile = e.target;
+      if (selectedTile !== currentTile) {
+        const temp = selectedTile.classList[1];
+        selectedTile.classList.replace(selectedTile.classList[1], currentTile.classList[1]);
+        currentTile.classList.replace(currentTile.classList[1], temp);
       }
-
-      return Array.from(matches);
+      selectedTile.style.border = '';
+      selectedTile = null;
     }
+  }
 
-    // Удаление совпавших плиток и обновление доски
-    function removeMatches(matches) {
-      matches.forEach(index => {
-        board[index] = null;
-      });
+  // Initialize the game
+  createGrid();
+</script>
 
-      // Добавить новые плитки
-      for (let i = 0; i < board.length; i++) {
-        if (board[i] === null) {
-          board[i] = colors[Math.floor(Math.random() * colors.length)];
-        }
-      }
-    }
-
-    // Обновление очков
-    function updateScore(points) {
-      score += points;
-      const scoreElement = document.getElementById('score');
-      scoreElement.textContent = `Score: ${score}`;
-      scoreElement.classList.add('score-animation');
-
-      setTimeout(() => {
-        scoreElement.classList.remove('score-animation');
-      }, 500);
-    }
-
-    // Перезапуск игры
-    document.getElementById('restart-button').addEventListener('click', () => {
-      board = generateBoard();
-      score = 0;
-      document.getElementById('score').textContent = 'Score: 0';
-      renderBoard();
-    });
-
-    // Инициализация игры
-    function initializeGame() {
-      board = generateBoard();
-      renderBoard();
-
-      const container = document.getElementById('game-container');
-      let draggedIndex = null;
-
-      container.addEventListener('dragstart', (e) => {
-        draggedIndex = e.target.dataset.index;
-        e.target.style.opacity = '0.5';
-      });
-
-      container.addEventListener('dragend', (e) => {
-        e.target.style.opacity = '1';
-      });
-
-      container.addEventListener('dragover', (e) => {
-        e.preventDefault();
-      });
-
-      container.addEventListener('drop', (e) => {
-        const targetIndex = e.target.dataset.index;
-
-        if (draggedIndex !== null && targetIndex !== undefined) {
-          // Меняем местами плитки
-          [board[draggedIndex], board[targetIndex]] = [board[targetIndex], board[draggedIndex]];
-          renderBoard();
-
-          // Проверяем совпадения
-          const matches = checkMatches();
-          if (matches.length > 0) {
-            removeMatches(matches);
-            updateScore(matches.length * 10); // Начисляем очки
-          }
-
-          renderBoard();
-        }
-      });
-    }
-
-    initializeGame();
-  </script>
 </body>
 </html>
